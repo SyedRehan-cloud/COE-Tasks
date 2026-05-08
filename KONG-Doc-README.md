@@ -389,37 +389,31 @@ flowchart LR
 
 # 14. JWT Security Flow
 
-```mermaid id="jwt1"
-sequenceDiagram
-    participant Client
-    participant Kong
-    participant JWT
-    participant Service
+```mermaid id="jwt_fixed"
+flowchart TD
+    A[Client Request with JWT Token] --> B[Kong Gateway]
 
-    Client->>Kong: Request with Token
-    Kong->>JWT: Validate Token
+    B --> C{JWT Plugin Validation}
 
-    alt Valid
-        Kong->>Service: Forward Request
-        Service-->>Kong: Response
-        Kong-->>Client: Success
-    else Invalid
-        Kong-->>Client: 401 Unauthorized
-    end
+    C -->|Valid Token| D[Forward to Service]
+    D --> E[Service Response]
+    E --> F[Return Success Response to Client]
+
+    C -->|Invalid Token| G[Return 401 Unauthorized]
 ```
 
 # 15. Rate Limiting Flow
 
-```mermaid id="rate1"
+```mermaid id="rate_fixed"
 flowchart TD
-    A["Client Request"] --> B["Kong"]
-    B --> C["Rate Limit Plugin"]
+    A[Client Request] --> B[Kong Gateway]
+    B --> C[Rate Limiting Plugin]
 
-    C -->|Allowed| D["Service"]
-    C -->|Blocked| E["429 Error"]
+    C -->|Within Limit| D[Forward to Service]
+    D --> E[Service Response]
+    E --> F[Return Response to Client]
 
-    D --> F["Response"]
-    E --> F
+    C -->|Limit Exceeded| G[Return 429 Too Many Requests]
 ```
 
 # 16. Routing Logic
