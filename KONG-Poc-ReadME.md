@@ -1,43 +1,77 @@
-# Kong Kubernetes POC
+# KONG POC — SIMPLE KUBERNETES IMPLEMENTATION
 
-# 1. Objective
+<img width="340" height="230" alt="image" src="https://github.com/user-attachments/assets/90f82e30-a73d-4d75-8eb5-94a8ccc85887" />
 
-* Deploy Kong on Kubernetes
-* Deploy microservice
-* Expose API via Kong
-* Test routing
+
+# 1. Overview
+
+This POC demonstrates:
+
+* Kong deployment on Kubernetes
+* API routing using ingress
+* Kubernetes service discovery
+* Request forwarding through Kong
+
+# 2. Objective
+
+The objective is to:
+
+* Deploy Kong Gateway
+* Deploy sample microservice
+* Configure ingress
+* Test API routing
 
 ---
 
-# 2. Architecture
+# 3. Architecture
 
-```mermaid id="pocarch"
-flowchart LR
-    Client["Client"] --> Kong["Kong Gateway"]
-    Kong --> Service["Kubernetes Service"]
-    Service --> Pod["Application Pod"]
+```txt id="4sht0m"
+Client
+   ↓
+Kong Gateway
+   ↓
+Kubernetes Service
+   ↓
+Application Pod
 ```
 
----
+# 4. Prerequisites
 
-# 3. Folder Structure
+| Requirement        | Description    |
+| ------------------ | -------------- |
+| Kubernetes Cluster | Minikube / EKS |
+| kubectl            | Installed      |
+| Helm               | Installed      |
 
-```txt id="pocstruct"
+
+# 5. Folder Structure
+
+```txt id="cfxb7l"
 kong-poc/
 ├── namespace.yaml
-├── deployment.yaml
-├── service.yaml
+├── app-deployment.yaml
+├── app-service.yaml
 ├── ingress.yaml
+├── deploy.sh
+└── cleanup.sh
 ```
 
 ---
 
-# 4. Install Kong
+# 6. Install Kong
 
-```bash id="pocinstall"
+## Add Helm Repository
+
+```bash id="hvrv6n"
 helm repo add kong https://charts.konghq.com
 helm repo update
+```
 
+---
+
+## Install Kong
+
+```bash id="9r6vbo"
 helm install kong kong/kong \
   --namespace kong \
   --create-namespace
@@ -45,9 +79,26 @@ helm install kong kong/kong \
 
 ---
 
-# 5. Namespace
+## Verify Installation
 
-```yaml id="pocns"
+```bash id="wgtmly"
+kubectl get pods -n kong
+```
+
+Expected:
+
+```txt id="w2l4db"
+kong-controller-manager Running
+kong-gateway Running
+```
+
+---
+
+# 7. Deploy Application
+
+# namespace.yaml
+
+```yaml id="w7nfrx"
 apiVersion: v1
 kind: Namespace
 metadata:
@@ -56,9 +107,9 @@ metadata:
 
 ---
 
-# 6. Deployment
+# app-deployment.yaml
 
-```yaml id="pocdep"
+```yaml id="lbhjj1"
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -68,14 +119,14 @@ spec:
   replicas: 1
   selector:
     matchLabels:
-      app: user
+      app: user-service
   template:
     metadata:
       labels:
-        app: user
+        app: user-service
     spec:
       containers:
-      - name: user
+      - name: user-service
         image: hashicorp/http-echo
         args:
         - "-text=Hello from Kong POC"
@@ -85,9 +136,9 @@ spec:
 
 ---
 
-# 7. Service
+# app-service.yaml
 
-```yaml id="pocsvc"
+```yaml id="mvh0qe"
 apiVersion: v1
 kind: Service
 metadata:
@@ -95,7 +146,7 @@ metadata:
   namespace: demo
 spec:
   selector:
-    app: user
+    app: user-service
   ports:
   - port: 80
     targetPort: 5678
@@ -103,13 +154,25 @@ spec:
 
 ---
 
-# 8. Ingress
+# Apply Resources
 
-```yaml id="pocing"
+```bash id="h1m8mx"
+kubectl apply -f namespace.yaml
+kubectl apply -f app-deployment.yaml
+kubectl apply -f app-service.yaml
+```
+
+---
+
+# 8. Configure Ingress
+
+# ingress.yaml
+
+```yaml id="hkrg90"
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: kong-ingress
+  name: kong-demo
   namespace: demo
   annotations:
     konghq.com/strip-path: "true"
@@ -129,45 +192,96 @@ spec:
 
 ---
 
-# 9. Deploy
+# Apply Ingress
 
-```bash id="pocdeploy"
-kubectl apply -f namespace.yaml
-kubectl apply -f deployment.yaml
-kubectl apply -f service.yaml
+```bash id="lg6mv9"
 kubectl apply -f ingress.yaml
 ```
 
 ---
 
-# 10. Flow
+# 9. Verify Setup
 
-```mermaid id="pocflow"
-flowchart LR
-    Client["Client"] --> Kong["Kong"]
-    Kong --> Service["Service"]
-    Service --> Pod["Pod"]
+## Check Pods
+
+```bash id="l0d5yf"
+kubectl get pods -A
 ```
 
 ---
 
-# 11. Test API
+## Check Services
 
-```bash id="poctest"
-curl http://<KONG-IP>/users
+```bash id="p2gc6k"
+kubectl get svc -A
 ```
 
-Expected:
+---
 
-```txt id="pocres"
+## Check Ingress
+
+```bash id="v52oc5"
+kubectl get ingress -A
+```
+
+---
+
+# Get Kong External IP
+
+```bash id="0pjsl0"
+kubectl get svc -n kong
+```
+
+Look for:
+
+```txt id="8mrfhn"
+kong-kong-proxy
+```
+
+---
+
+# 10. Testing
+
+## Test API
+
+```bash id="55zg6i"
+curl http://<EXTERNAL-IP>/users
+```
+
+Expected Output:
+
+```txt id="i7g74z"
 Hello from Kong POC
 ```
 
 ---
 
-# 12. Cleanup
+# Request Flow
 
-```bash id="pocclean"
+```txt id="jglg7m"
+Client
+   ↓
+Kong Gateway
+   ↓
+Ingress Rule
+   ↓
+Kubernetes Service
+   ↓
+Application Pod
+```
+
+# 11. Cleanup
+
+```bash id="l3x5uk"
 kubectl delete namespace demo
 helm uninstall kong -n kong
 ```
+
+# 12. Troubleshooting
+
+| Issue               | Cause              | Solution       |
+| ------------------- | ------------------ | -------------- |
+| 404 from Kong       | Route mismatch     | Verify ingress |
+| Service unreachable | Wrong service name | Check service  |
+| External IP pending | No cloud LB        | Use NodePort   |
+| Pod crash           | Invalid manifest   | Check logs     |
