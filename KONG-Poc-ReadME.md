@@ -1,6 +1,6 @@
 # Kong API Gateway — Real-World Microservices (E-Commerce System)
 
-<img width="1140" height="630" alt="image" src="https://github.com/user-attachments/assets/59367fa8-5fd4-42ab-b171-357bf72df8d5" />
+<img width="340" height="230" alt="image" src="https://github.com/user-attachments/assets/59367fa8-5fd4-42ab-b171-357bf72df8d5" />
 
 
 # 1. Overview
