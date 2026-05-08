@@ -1,8 +1,13 @@
 # KONG API GATEWAY — DETAILED DOCUMENTATION
 
+<img width="395" height="127" alt="image" src="https://github.com/user-attachments/assets/a3856b4a-dcb7-44f3-a942-0f46bf913359" />
+
+
+
+
+
 <details>
 <summary>Table of Contents</summary>
-
 1. Introduction
 2. Objective
 3. What is Kong?
@@ -13,23 +18,26 @@
 8. Kong Architecture
 9. Kong Internal Working
 10. Kong Components
-11. Kong Deployment Modes
-12. Kong with Kubernetes
-13. Kong with AWS ALB
-14. Request Lifecycle in Kong
-15. Kong Plugins
-16. Security Features
-17. Service Discovery in Kong
-18. Kong Routing Mechanism
-19. Kong vs Other API Gateways
-20. Why We Are Choosing Kong
-21. Advantages & Disadvantages
-22. Best Practices
-23. Production Architecture
-24. Monitoring & Observability
-25. FAQs
-26. Contact Information
-27. References
+11. Plugin Types
+12. Kubernetes Integration
+13. AWS ALB + Kong Architecture
+14. JWT Security Flow
+15. Rate Limiting Flow
+16. Routing Logic
+17. Kong Deployment Modes
+18. Kong with Kubernetes
+19. Security Features
+20. Service Discovery in Kong
+21. Kong Routing Mechanism
+22. Kong vs Other API Gateways
+23. Why We Are Choosing Kong
+24. Advantages & Disadvantages
+25. Best Practices
+26. Production Architecture
+27. Monitoring & Observability
+28. FAQs
+29. Contact Information
+30. References
 
 </details>
 
@@ -333,20 +341,118 @@ user-service.default.svc.cluster.local
 
 ---
 
-## Plugins
+## Plugin Execution Flow
 
-Extend Kong capabilities.
+```mermaid id="plugin1"
+flowchart TD
+    A["Request"] --> B["Auth Plugin"]
+    B --> C["Rate Limit Plugin"]
+    C --> D["Transform Plugin"]
+    D --> E["Service"]
+    E --> F["Response Plugin"]
+    F --> G["Client"]
+```
 
-Examples:
+---
 
-* JWT auth
-* Rate limiting
+# 11. Plugin Types
+
+## Authentication
+
+* JWT
+* Key Auth
+* OAuth2
+
+## Traffic Control
+
+* Rate Limiting
+* Spike Arrest
+
+## Observability
+
+* Prometheus
 * Logging
+
+## Transformation
+
+* Request/Response modification
 * CORS
 
 ---
 
-# 11. Kong Deployment Modes
+# 12. Kubernetes Integration
+
+```mermaid id="k8s1"
+flowchart LR
+    Client["User"] --> Kong["Kong Ingress"]
+
+    Kong --> Ingress["K8s Ingress Rule"]
+    Ingress --> Service["Kubernetes Service"]
+    Service --> Pod1["Pod"]
+    Service --> Pod2["Pod"]
+```
+
+---
+
+# 13. AWS ALB + Kong Architecture
+
+```mermaid id="aws1"
+flowchart LR
+    Internet["Internet"] --> Route53["Route 53"]
+    Route53 --> ALB["AWS ALB"]
+    ALB --> Kong["Kong on EKS"]
+
+    Kong --> User["User Service"]
+    Kong --> Order["Order Service"]
+    Kong --> Payment["Payment Service"]
+```
+
+---
+
+# 14. JWT Security Flow
+
+```mermaid id="jwt1"
+sequenceDiagram
+    participant Client
+    participant Kong
+    participant JWT
+    participant Service
+
+    Client->>Kong: Request with Token
+    Kong->>JWT: Validate Token
+
+    alt Valid
+        Kong->>Service: Forward Request
+        Service-->>Kong: Response
+        Kong-->>Client: Success
+    else Invalid
+        Kong-->>Client: 401 Unauthorized
+    end
+```
+
+---
+
+# 15. Rate Limiting Flow
+
+```mermaid id="rate1"
+flowchart TD
+    A["Client Request"] --> B["Kong"]
+    B --> C["Rate Limit Plugin"]
+
+    C -->|Allowed| D["Service"]
+    C -->|Blocked| E["429 Error"]
+
+    D --> F["Response"]
+    E --> F
+```
+
+# 16. Routing Logic
+
+* Path-based routing (/users)
+* Host-based routing
+* Header-based routing
+
+# 17. Kong Deployment Modes
 
 ## DB Mode
 
@@ -373,9 +479,8 @@ Advantages:
 * lightweight
 * GitOps-friendly
 
----
 
-# 12. Kong with Kubernetes
+# 18. Kong with Kubernetes
 
 Kong integrates with Kubernetes using:
 
@@ -398,8 +503,6 @@ Kubernetes Service
 Pods
 ```
 
----
-
 # Example Kubernetes DNS
 
 ```txt id="ozqjdo"
@@ -410,7 +513,7 @@ Kong routes internally using this DNS.
 
 ---
 
-# 13. Kong with AWS ALB
+# 19. Kong with AWS ALB
 
 Production environments commonly use:
 
@@ -437,7 +540,7 @@ Microservices
 
 ---
 
-# 14. Request Lifecycle in Kong
+# 20. Request Lifecycle in Kong
 
 ```mermaid id="hmf3yo"
 sequenceDiagram
@@ -456,28 +559,7 @@ Kong-->>ALB: Response
 ALB-->>Client: Final Response
 ```
 
----
-
-# 15. Kong Plugins
-
-Plugins provide extensibility.
-
----
-
-# Common Plugins
-
-| Plugin        | Purpose               |
-| ------------- | --------------------- |
-| JWT           | Authentication        |
-| Key Auth      | API key validation    |
-| Rate Limiting | Prevent abuse         |
-| Prometheus    | Metrics               |
-| CORS          | Cross-origin requests |
-| Logging       | Centralized logs      |
-
----
-
-# 16. Security Features
+# 21. Security Features
 
 | Feature        | Description          |
 | -------------- | -------------------- |
@@ -490,7 +572,7 @@ Plugins provide extensibility.
 
 ---
 
-# 17. Service Discovery in Kong
+# 22. Service Discovery in Kong
 
 Kong supports:
 
@@ -509,7 +591,7 @@ orders-service.default.svc.cluster.local
 
 ---
 
-# 18. Kong Routing Mechanism
+# 23. Kong Routing Mechanism
 
 Kong routes requests based on:
 
@@ -522,7 +604,7 @@ Kong routes requests based on:
 
 ---
 
-# 19. Kong vs Other API Gateways
+# 24. Kong vs Other API Gateways
 
 | Feature           | Kong      | AWS API Gateway | Traefik   | NGINX    |
 | ----------------- | --------- | --------------- | --------- | -------- |
@@ -535,7 +617,7 @@ Kong routes requests based on:
 
 ---
 
-# 20. Why We Are Choosing Kong
+# 25. Why We Are Choosing Kong
 
 ## Technical Reasons
 
@@ -546,7 +628,6 @@ Kong routes requests based on:
 * DB-less support
 * Excellent ingress integration
 
----
 
 ## Business Reasons
 
@@ -556,9 +637,7 @@ Kong routes requests based on:
 * Faster onboarding
 * Strong community support
 
----
-
-# 21. Advantages & Disadvantages
+# 26. Advantages & Disadvantages
 
 | Advantages       | Disadvantages            |
 | ---------------- | ------------------------ |
@@ -569,7 +648,7 @@ Kong routes requests based on:
 
 ---
 
-# 22. Best Practices
+# 27. Best Practices
 
 | Best Practice          | Recommendation        |
 | ---------------------- | --------------------- |
@@ -581,7 +660,7 @@ Kong routes requests based on:
 
 ---
 
-# 23. Production Architecture
+# 28. Production Architecture
 
 ```txt id="mlmcck"
 Internet
@@ -597,9 +676,7 @@ Microservices
 Databases
 ```
 
----
-
-# 24. Monitoring & Observability
+# 29. Monitoring & Observability
 
 Recommended stack:
 
@@ -621,3 +698,339 @@ Recommended stack:
 | Is ALB mandatory?             | No               |
 | Can Kong work without DB?     | Yes              |
 | Does Kong support JWT?        | Yes              |
+
+
+
+# KONG POC — SIMPLE KUBERNETES IMPLEMENTATION
+
+<img width="320" height="120" alt="image" src="https://github.com/user-attachments/assets/kong-poc-banner.png" />
+
+---
+
+# Author Table
+
+| Author         | Created On | Version | Last Updated By | Last Edited On | Level        | Reviewer |
+| -------------- | ---------- | ------- | --------------- | -------------- | ------------ | -------- |
+| Syed Rehan Ali | 2026-05-08 | 1.0     | Syed Rehan Ali  | 2026-05-08     | Pre Reviewer | TBD      |
+
+---
+
+# Table of Contents
+
+1. Overview
+2. Objective
+3. Architecture
+4. Prerequisites
+5. Folder Structure
+6. Install Kong
+7. Deploy Application
+8. Configure Ingress
+9. Verify Setup
+10. Testing
+11. Cleanup
+12. Troubleshooting
+13. References
+
+---
+
+# 1. Overview
+
+This POC demonstrates:
+
+* Kong deployment on Kubernetes
+* API routing using ingress
+* Kubernetes service discovery
+* Request forwarding through Kong
+
+---
+
+# 2. Objective
+
+The objective is to:
+
+* Deploy Kong Gateway
+* Deploy sample microservice
+* Configure ingress
+* Test API routing
+
+---
+
+# 3. Architecture
+
+```txt id="4sht0m"
+Client
+   ↓
+Kong Gateway
+   ↓
+Kubernetes Service
+   ↓
+Application Pod
+```
+
+---
+
+# 4. Prerequisites
+
+| Requirement        | Description    |
+| ------------------ | -------------- |
+| Kubernetes Cluster | Minikube / EKS |
+| kubectl            | Installed      |
+| Helm               | Installed      |
+
+---
+
+# 5. Folder Structure
+
+```txt id="cfxb7l"
+kong-poc/
+├── namespace.yaml
+├── app-deployment.yaml
+├── app-service.yaml
+├── ingress.yaml
+├── deploy.sh
+└── cleanup.sh
+```
+
+---
+
+# 6. Install Kong
+
+## Add Helm Repository
+
+```bash id="hvrv6n"
+helm repo add kong https://charts.konghq.com
+helm repo update
+```
+
+---
+
+## Install Kong
+
+```bash id="9r6vbo"
+helm install kong kong/kong \
+  --namespace kong \
+  --create-namespace
+```
+
+---
+
+## Verify Installation
+
+```bash id="wgtmly"
+kubectl get pods -n kong
+```
+
+Expected:
+
+```txt id="w2l4db"
+kong-controller-manager Running
+kong-gateway Running
+```
+
+---
+
+# 7. Deploy Application
+
+# namespace.yaml
+
+```yaml id="w7nfrx"
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: demo
+```
+
+---
+
+# app-deployment.yaml
+
+```yaml id="lbhjj1"
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: user-service
+  namespace: demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: user-service
+  template:
+    metadata:
+      labels:
+        app: user-service
+    spec:
+      containers:
+      - name: user-service
+        image: hashicorp/http-echo
+        args:
+        - "-text=Hello from Kong POC"
+        ports:
+        - containerPort: 5678
+```
+
+---
+
+# app-service.yaml
+
+```yaml id="mvh0qe"
+apiVersion: v1
+kind: Service
+metadata:
+  name: user-service
+  namespace: demo
+spec:
+  selector:
+    app: user-service
+  ports:
+  - port: 80
+    targetPort: 5678
+```
+
+---
+
+# Apply Resources
+
+```bash id="h1m8mx"
+kubectl apply -f namespace.yaml
+kubectl apply -f app-deployment.yaml
+kubectl apply -f app-service.yaml
+```
+
+---
+
+# 8. Configure Ingress
+
+# ingress.yaml
+
+```yaml id="hkrg90"
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: kong-demo
+  namespace: demo
+  annotations:
+    konghq.com/strip-path: "true"
+spec:
+  ingressClassName: kong
+  rules:
+  - http:
+      paths:
+      - path: /users
+        pathType: Prefix
+        backend:
+          service:
+            name: user-service
+            port:
+              number: 80
+```
+
+---
+
+# Apply Ingress
+
+```bash id="lg6mv9"
+kubectl apply -f ingress.yaml
+```
+
+---
+
+# 9. Verify Setup
+
+## Check Pods
+
+```bash id="l0d5yf"
+kubectl get pods -A
+```
+
+---
+
+## Check Services
+
+```bash id="p2gc6k"
+kubectl get svc -A
+```
+
+---
+
+## Check Ingress
+
+```bash id="v52oc5"
+kubectl get ingress -A
+```
+
+---
+
+# Get Kong External IP
+
+```bash id="0pjsl0"
+kubectl get svc -n kong
+```
+
+Look for:
+
+```txt id="8mrfhn"
+kong-kong-proxy
+```
+
+---
+
+# 10. Testing
+
+## Test API
+
+```bash id="55zg6i"
+curl http://<EXTERNAL-IP>/users
+```
+
+Expected Output:
+
+```txt id="i7g74z"
+Hello from Kong POC
+```
+
+---
+
+# Request Flow
+
+```txt id="jglg7m"
+Client
+   ↓
+Kong Gateway
+   ↓
+Ingress Rule
+   ↓
+Kubernetes Service
+   ↓
+Application Pod
+```
+
+---
+
+# 11. Cleanup
+
+```bash id="l3x5uk"
+kubectl delete namespace demo
+helm uninstall kong -n kong
+```
+
+---
+
+# 12. Troubleshooting
+
+| Issue               | Cause              | Solution       |
+| ------------------- | ------------------ | -------------- |
+| 404 from Kong       | Route mismatch     | Verify ingress |
+| Service unreachable | Wrong service name | Check service  |
+| External IP pending | No cloud LB        | Use NodePort   |
+| Pod crash           | Invalid manifest   | Check logs     |
+
+---
+
+# 13. References
+
+| Reference       | Link                                                                                |
+| --------------- | ----------------------------------------------------------------------------------- |
+| Kong Docs       | [Kong Documentation](https://docs.konghq.com/?utm_source=chatgpt.com)               |
+| Kong Helm       | [Kong Helm Charts](https://github.com/Kong/charts?utm_source=chatgpt.com)           |
+| Kubernetes Docs | [Kubernetes Documentation](https://kubernetes.io/docs/home/?utm_source=chatgpt.com) |
