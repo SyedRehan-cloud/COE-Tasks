@@ -3,45 +3,6 @@
 <img width="395" height="127" alt="image" src="https://github.com/user-attachments/assets/a3856b4a-dcb7-44f3-a942-0f46bf913359" />
 
 
-
-
-
-<details>
-<summary>Table of Contents</summary>
-1. Introduction
-2. Objective
-3. What is Kong?
-4. Why API Gateway is Required
-5. Problems Without API Gateway
-6. Evolution of Microservices and API Gateways
-7. Core Concepts of Kong
-8. Kong Architecture
-9. Kong Internal Working
-10. Kong Components
-11. Plugin Types
-12. Kubernetes Integration
-13. AWS ALB + Kong Architecture
-14. JWT Security Flow
-15. Rate Limiting Flow
-16. Routing Logic
-17. Kong Deployment Modes
-18. Kong with Kubernetes
-19. Security Features
-20. Service Discovery in Kong
-21. Kong Routing Mechanism
-22. Kong vs Other API Gateways
-23. Why We Are Choosing Kong
-24. Advantages & Disadvantages
-25. Best Practices
-26. Production Architecture
-27. Monitoring & Observability
-28. FAQs
-29. Contact Information
-30. References
-
-</details>
-
-
 # 1. Introduction
 
 Modern applications are increasingly built using microservices architecture, where applications are divided into smaller independently deployable services.
@@ -60,9 +21,7 @@ becomes difficult.
 
 This is where an API Gateway becomes essential.
 
-Kong is one of the most widely adopted cloud-native API gateways designed for scalability, security, and high performance.
-
----
+**Kong is one of the most widely adopted cloud-native API gateways designed for scalability, security, and high performance.**
 
 # 2. Objective
 
@@ -150,7 +109,6 @@ Benefits:
 | Traffic Control      | Rate limiting      |
 | Simplified Clients   | One API endpoint   |
 
----
 
 # 5. Problems Without API Gateway
 
@@ -163,8 +121,6 @@ Every service manages:
 * SSL
 
 This causes inconsistency.
-
----
 
 ## Operational Complexity
 
@@ -180,8 +136,6 @@ Without centralized gateway:
 
 * distributed logging becomes difficult
 * request tracing becomes hard
-
----
 
 # 6. Evolution of Microservices and API Gateways
 
@@ -214,7 +168,6 @@ API gateways became essential for:
 | Upstream | Load-balanced services  |
 | Target   | Actual backend instance |
 
----
 
 # 8. Kong Architecture
 
@@ -251,9 +204,8 @@ Kong is built on:
 * OpenResty
 * Lua
 
-Kong intercepts requests and processes them through a plugin execution pipeline.
+**Kong intercepts requests and processes them through a plugin execution pipeline.**
 
----
 
 # Request Processing Flow
 
@@ -309,8 +261,6 @@ Example:
 /payments
 ```
 
----
-
 ## Services
 
 Backend microservices.
@@ -320,8 +270,6 @@ Example:
 ```txt id="o6exbe"
 user-service.default.svc.cluster.local
 ```
-
----
 
 ## Plugin Execution Flow
 
@@ -357,8 +305,6 @@ flowchart TD
 
 * Request/Response modification
 * CORS
-
----
 
 # 12. Kubernetes Integration
 
@@ -501,7 +447,6 @@ Microservices
 | AWS WAF            | Rate limiting       |
 | Internet exposure  | API governance      |
 
----
 
 # 20. Request Lifecycle in Kong
 
@@ -609,8 +554,6 @@ Kong routes requests based on:
 | Use Monitoring         | Prometheus/Grafana    |
 | Use GitOps             | Declarative configs   |
 
----
-
 # 28. Production Architecture
 
 ```txt id="mlmcck"
@@ -647,4 +590,3 @@ Recommended stack:
 | Is ALB mandatory?             | No               |
 | Can Kong work without DB?     | Yes              |
 | Does Kong support JWT?        | Yes              |
-
