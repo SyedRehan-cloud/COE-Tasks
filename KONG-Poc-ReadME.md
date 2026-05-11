@@ -2,6 +2,7 @@
 
 <img width="340" height="230" alt="image" src="https://github.com/user-attachments/assets/59367fa8-5fd4-42ab-b171-357bf72df8d5" />
 
+
 # 1. Overview
 
 This project demonstrates a real-world microservices architecture using Kong API Gateway on Kubernetes.
@@ -12,97 +13,93 @@ The system simulates an E-Commerce Platform with:
 - Order Service
 - Payment Service
 
-Kong acts as the central API Gateway responsible for routing all incoming traffic to backend microservices.
+Kong acts as a central API Gateway responsible for:
+
+- Routing
+- Authentication (JWT)
+- Rate Limiting
+- Logging & Observability
+
 
 # 2. Objective
 
-- Deploy microservices on Kubernetes
+- Deploy microservices on Kubernetes (Minikube + EKS)
 - Use Kong API Gateway
+- Implement API Gateway plugins:
+  - JWT Authentication
+  - Rate Limiting
+  - HTTP Logging
 - Configure ingress-based routing
 - Simulate production-grade architecture
-- Demonstrate Minikube and AWS EKS setups
-- Understand API Gateway architecture
+
 
 # 3. Architecture
 
 ```mermaid
 flowchart LR
 
-Client["Client / Browser / Mobile App"]
+Client["Client"]
 
 Client --> Kong["Kong API Gateway"]
 
-Kong --> User["User Service"]
-Kong --> Order["Order Service"]
-Kong --> Payment["Payment Service"]
+Kong --> JWT["JWT Plugin"]
+JWT --> RateLimit["Rate Limiting Plugin"]
+RateLimit --> Log["Logging Plugin"]
 
-Order --> DB1[(Order DB)]
-User --> DB2[(User DB)]
-Payment --> DB3[(Payment DB)]
+Log --> User["User Service"]
+Log --> Order["Order Service"]
+Log --> Payment["Payment Service"]
 ````
 
 # 4. Prerequisites
 
-## Required Tools
+| Tool     | Purpose                    |
+| -------- | -------------------------- |
+| Docker   | Container runtime          |
+| kubectl  | Kubernetes CLI             |
+| Minikube | Local Kubernetes cluster   |
+| Helm     | Kubernetes package manager |
 
-| Tool               | Purpose                    |
-| ------------------ | -------------------------- |
-| Docker             | Container Runtime          |
-| kubectl            | Kubernetes CLI             |
-| Minikube           | Local Kubernetes Cluster   |
-| Helm               | Kubernetes Package Manager |
-| AWS CLI (Optional) | AWS Access                 |
-| eksctl (Optional)  | EKS Cluster Setup          |
 
-# 5. Verify Installation
+# 5. Kubernetes Cluster Setup
 
-## Docker
 
-```bash
-docker --version
-```
+## Option 1 — Minikube (Local Setup)
 
-## kubectl
+⚠️ Note:
+Minikube requires ~2GB RAM minimum. On small EC2 instances it may fail due to memory limits.
+
+### Install Minikube
 
 ```bash
-kubectl version --client
+curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
+sudo install minikube-linux-amd64 /usr/local/bin/minikube
 ```
 
-## Minikube
+### Start Cluster
 
 ```bash
-minikube version
+minikube start --driver=docker --memory=2500 --cpus=2
 ```
 
-## Helm
+### Verify
 
 ```bash
-helm version
+kubectl get nodes
+minikube status
 ```
 
-# 6. Kubernetes Cluster Setup
+---
 
-# Option 1 — Minikube (Recommended for Local)
-
-## Start Minikube
-
-```bash
-minikube start --driver=docker
-```
-
-## Enable NGINX Ingress
+### (Optional) Enable Ingress
 
 ```bash
 minikube addons enable ingress
 ```
 
-## Verify
+---
 
-```bash
-kubectl get pods -n ingress-nginx
-```
-
-# Option 2 — AWS EKS (Production-Like)
+## Option 2 — AWS EKS (Production-Like)
 
 ```bash
 eksctl create cluster \
@@ -113,18 +110,12 @@ eksctl create cluster \
 
 ---
 
-# 7. Install Kong API Gateway
-
-## Add Kong Helm Repository
+# 6. Install Kong API Gateway
 
 ```bash
 helm repo add kong https://charts.konghq.com
 helm repo update
 ```
-
----
-
-# Install Kong on Minikube
 
 ```bash
 helm install kong kong/kong \
@@ -134,59 +125,26 @@ helm install kong kong/kong \
   --set proxy.type=NodePort
 ```
 
-# Verify Kong Installation
+---
 
-```bash
-kubectl get pods -n kong
-```
-
-```bash
-kubectl get svc -n kong
-```
-
-Expected services:
-
-* kong-kong-proxy
-* kong-controller
-* kong-kong-manager
-
-
-# 8. Project Structure
-
-## Create Project Folder
+# 7. Project Structure
 
 ```bash
 mkdir kong-ecommerce-poc
 cd kong-ecommerce-poc
 ```
 
-# Create YAML Files
-
 ```bash
-touch namespace.yaml \
-user-service.yaml \
-order-service.yaml \
-payment-service.yaml \
-kong-ingress.yaml \
-alb-ingress.yaml
-```
-# Final Structure
-
-```txt
-kong-ecommerce-poc/
-├── namespace.yaml
-├── user-service.yaml
-├── order-service.yaml
-├── payment-service.yaml
-├── kong-ingress.yaml
-├── alb-ingress.yaml
+touch namespace.yaml user-service.yaml order-service.yaml payment-service.yaml kong-ingress.yaml
 ```
 
 ---
 
-# 9. Kubernetes Manifests
+# 8. Kubernetes Manifests
 
-# namespace.yaml
+---
+
+## namespace.yaml
 
 ```yaml
 apiVersion: v1
@@ -195,9 +153,7 @@ metadata:
   name: demo
 ```
 
----
-
-# user-service.yaml
+## user-service.yaml
 
 ```yaml
 apiVersion: apps/v1
@@ -205,50 +161,38 @@ kind: Deployment
 metadata:
   name: user-service
   namespace: demo
-
 spec:
   replicas: 2
-
   selector:
     matchLabels:
       app: user
-
   template:
     metadata:
       labels:
         app: user
-
     spec:
       containers:
       - name: user
         image: hashicorp/http-echo
-
         args:
         - "-text=User Service Working"
-
         ports:
         - containerPort: 5678
-
 ---
 apiVersion: v1
 kind: Service
-
 metadata:
   name: user-service
   namespace: demo
-
 spec:
   selector:
     app: user
-
   ports:
   - port: 80
     targetPort: 5678
 ```
 
----
-
-# order-service.yaml
+## order-service.yaml
 
 ```yaml
 apiVersion: apps/v1
@@ -256,42 +200,32 @@ kind: Deployment
 metadata:
   name: order-service
   namespace: demo
-
 spec:
   replicas: 2
-
   selector:
     matchLabels:
       app: order
-
   template:
     metadata:
       labels:
         app: order
-
     spec:
       containers:
       - name: order
         image: hashicorp/http-echo
-
         args:
         - "-text=Order Service Working"
-
         ports:
         - containerPort: 5678
-
 ---
 apiVersion: v1
 kind: Service
-
 metadata:
   name: order-service
   namespace: demo
-
 spec:
   selector:
     app: order
-
   ports:
   - port: 80
     targetPort: 5678
@@ -299,7 +233,7 @@ spec:
 
 ---
 
-# payment-service.yaml
+## payment-service.yaml
 
 ```yaml
 apiVersion: apps/v1
@@ -307,72 +241,107 @@ kind: Deployment
 metadata:
   name: payment-service
   namespace: demo
-
 spec:
   replicas: 2
-
   selector:
     matchLabels:
       app: payment
-
   template:
     metadata:
       labels:
         app: payment
-
     spec:
       containers:
       - name: payment
         image: hashicorp/http-echo
-
         args:
         - "-text=Payment Service Working"
-
         ports:
         - containerPort: 5678
-
 ---
 apiVersion: v1
 kind: Service
-
 metadata:
   name: payment-service
   namespace: demo
-
 spec:
   selector:
     app: payment
-
   ports:
   - port: 80
     targetPort: 5678
 ```
 
+# 9. Kong Plugins (REAL PRODUCTION FEATURES)
+
 ---
 
-# kong-ingress.yaml
+## JWT Plugin
+
+```yaml
+apiVersion: configuration.konghq.com/v1
+kind: KongPlugin
+metadata:
+  name: jwt-auth
+  namespace: demo
+plugin: jwt
+config:
+  key_claim_name: iss
+  claims_to_verify:
+  - exp
+```
+
+---
+
+## Rate Limiting Plugin
+
+```yaml
+apiVersion: configuration.konghq.com/v1
+kind: KongPlugin
+metadata:
+  name: rate-limit
+  namespace: demo
+plugin: rate-limiting
+config:
+  minute: 5
+  policy: local
+```
+
+---
+
+## Logging Plugin
+
+```yaml
+apiVersion: configuration.konghq.com/v1
+kind: KongPlugin
+metadata:
+  name: http-log
+  namespace: demo
+plugin: http-log
+config:
+  http_endpoint: http://mockbin.org/bin/log
+  method: POST
+  timeout: 1000
+```
+
+# 10. Kong Ingress (WITH PLUGINS)
 
 ```yaml
 apiVersion: networking.k8s.io/v1
 kind: Ingress
-
 metadata:
   name: kong-ingress
   namespace: demo
-
   annotations:
     konghq.com/strip-path: "true"
-
+    konghq.com/plugins: jwt-auth,rate-limit,http-log
 spec:
   ingressClassName: kong
-
   rules:
   - http:
       paths:
-
       - path: /users
         pathType: Prefix
-
         backend:
           service:
             name: user-service
@@ -381,7 +350,6 @@ spec:
 
       - path: /orders
         pathType: Prefix
-
         backend:
           service:
             name: order-service
@@ -390,257 +358,82 @@ spec:
 
       - path: /payments
         pathType: Prefix
-
         backend:
           service:
             name: payment-service
             port:
               number: 80
+```
+
+# 11. Deploy Everything
+
+```bash
+kubectl apply -f namespace.yaml
+kubectl apply -f user-service.yaml
+kubectl apply -f order-service.yaml
+kubectl apply -f payment-service.yaml
+kubectl apply -f kong-ingress.yaml
+```
+
+# 12. Verify
+
+```bash
+kubectl get pods -n demo
+kubectl get svc -n demo
+kubectl get ingress -n demo
 ```
 
 ---
 
-# alb-ingress.yaml (AWS ONLY)
-
-```yaml
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-
-metadata:
-  name: aws-alb-ingress
-  namespace: demo
-
-  annotations:
-    kubernetes.io/ingress.class: alb
-    alb.ingress.kubernetes.io/scheme: internet-facing
-
-spec:
-  rules:
-  - http:
-      paths:
-
-      - path: /users
-        pathType: Prefix
-
-        backend:
-          service:
-            name: user-service
-            port:
-              number: 80
-
-      - path: /orders
-        pathType: Prefix
-
-        backend:
-          service:
-            name: order-service
-            port:
-              number: 80
-
-      - path: /payments
-        pathType: Prefix
-
-        backend:
-          service:
-            name: payment-service
-            port:
-              number: 80
-```
-
-# 10. Deploy Application
-
-## Apply Namespace
-
-```bash
-kubectl apply -f namespace.yaml
-```
-
-## Deploy Services
-
-```bash
-kubectl apply -f user-service.yaml
-kubectl apply -f order-service.yaml
-kubectl apply -f payment-service.yaml
-```
-
-## Apply Kong Ingress
-
-```bash
-kubectl apply -f kong-ingress.yaml
-```
-
-# 11. Verify Deployment
-
-## Check Pods
-
-```bash
-kubectl get pods -n demo
-```
-
-## Check Services
-
-```bash
-kubectl get svc -n demo
-```
-
-## Check Ingress
-
-```bash
-kubectl get ingress -n demo
-```
-
-# 12. Access APIs
-
-# Minikube
-
-Get Kong Proxy URL:
+# 13. Test APIs
 
 ```bash
 minikube service kong-kong-proxy -n kong
 ```
 
-Example Output:
-
-```txt
-http://127.0.0.1:54321
-```
-
-# 13. Test APIs
-
-# User Service
+Then:
 
 ```bash
 curl http://127.0.0.1:54321/users
-```
-
-Expected Response:
-
-```txt
-User Service Working
-```
-
-# Order Service
-
-```bash
 curl http://127.0.0.1:54321/orders
-```
-
-Expected Response:
-
-```txt
-Order Service Working
-```
-
----
-
-# Payment Service
-
-```bash
 curl http://127.0.0.1:54321/payments
 ```
 
-Expected Response:
-
-```txt
-Payment Service Working
-```
-
-# 14. AWS ALB Setup (Optional)
-
-## Install AWS Load Balancer Controller
+# 14. AWS EKS Setup
 
 ```bash
-helm repo add eks https://aws.github.io/eks-charts
-helm repo update
+eksctl create cluster \
+  --name kong-cluster \
+  --region ap-south-1 \
+  --nodes 2
 ```
 
-```bash
-helm install aws-load-balancer-controller eks/aws-load-balancer-controller \
-  -n kube-system
-```
-
-# Apply ALB Ingress
-
-```bash
-kubectl apply -f alb-ingress.yaml
-```
-
-# 15. AWS Production Architecture
+# 15. Architecture
 
 ```mermaid
 flowchart LR
 
-User["Client"]
+Client["Client"]
 
-User --> DNS["Route53"]
+Client --> Kong["Kong API Gateway"]
 
-DNS --> ALB["AWS ALB"]
+Kong --> JWT["JWT Auth"]
+JWT --> Rate["Rate Limiting"]
+Rate --> Log["Logging"]
 
-ALB --> Kong["Kong API Gateway"]
-
-Kong --> UserSvc["User Service"]
-Kong --> OrderSvc["Order Service"]
-Kong --> PaymentSvc["Payment Service"]
+Log --> User["User Service"]
+Log --> Order["Order Service"]
+Log --> Payment["Payment Service"]
 ```
 
-# 16. Troubleshooting
-
-# Error: 404 Not Found
-
-Reapply ingress:
-
-```bash
-kubectl apply -f kong-ingress.yaml
-```
-
-# Error: Connection Refused
-
-Restart Kong proxy:
-
-```bash
-minikube service kong-kong-proxy -n kong
-```
-
----
-
-# Error: No Endpoints Available
-
-Check pods:
-
-```bash
-kubectl get pods -n demo
-```
-
-# 17. Cleanup
-
-## Delete Kubernetes Resources
+# 16. Cleanup
 
 ```bash
 kubectl delete -f kong-ingress.yaml
-
 kubectl delete -f user-service.yaml
 kubectl delete -f order-service.yaml
 kubectl delete -f payment-service.yaml
-
 kubectl delete namespace demo
-```
-
-# Remove Kong
-
-```bash
 helm uninstall kong -n kong
-```
-
-# Stop Minikube
-
-```bash
 minikube stop
-```
-
-# Delete EKS Cluster (If Used)
-
-```bash
-eksctl delete cluster \
-  --name kong-cluster \
-  --region ap-south-1
 ```
