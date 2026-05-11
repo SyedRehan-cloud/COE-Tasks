@@ -2,57 +2,107 @@
 
 <img width="340" height="230" alt="image" src="https://github.com/user-attachments/assets/59367fa8-5fd4-42ab-b171-357bf72df8d5" />
 
-
 # 1. Overview
 
-This POC demonstrates a **real-world microservices architecture using Kong API Gateway**, simulating an **E-Commerce system** with:
+This project demonstrates a real-world microservices architecture using Kong API Gateway on Kubernetes.
 
-* User Service (Authentication/Profile)
-* Order Service (Order Management)
-* Payment Service (Payment Processing)
+The system simulates an E-Commerce Platform with:
 
-Kong acts as a **central API Gateway** responsible for routing all traffic.
+- User Service
+- Order Service
+- Payment Service
+
+Kong acts as the central API Gateway responsible for routing all incoming traffic to backend microservices.
 
 # 2. Objective
 
-* Deploy microservices on Kubernetes
-* Use Kong as API Gateway
-* Route traffic using ingress rules
-* Simulate production-grade architecture
-* Demonstrate ALB vs Non-ALB setups
+- Deploy microservices on Kubernetes
+- Use Kong API Gateway
+- Configure ingress-based routing
+- Simulate production-grade architecture
+- Demonstrate Minikube and AWS EKS setups
+- Understand API Gateway architecture
 
+# 3. Architecture
 
-# 3. Prerequisites
+```mermaid
+flowchart LR
+
+Client["Client / Browser / Mobile App"]
+
+Client --> Kong["Kong API Gateway"]
+
+Kong --> User["User Service"]
+Kong --> Order["Order Service"]
+Kong --> Payment["Payment Service"]
+
+Order --> DB1[(Order DB)]
+User --> DB2[(User DB)]
+Payment --> DB3[(Payment DB)]
+````
+
+# 4. Prerequisites
 
 ## Required Tools
 
-| Tool               | Purpose                    | Install Link                                                                                                                               |
-| ------------------ | -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| kubectl            | Kubernetes CLI             | [https://kubernetes.io/docs/tasks/tools/](https://kubernetes.io/docs/tasks/tools/)                                                         |
-| Docker             | Container runtime          | [https://docs.docker.com/get-docker/](https://docs.docker.com/get-docker/)                                                                 |
-| Helm               | Kubernetes package manager | [https://helm.sh/docs/intro/install/](https://helm.sh/docs/intro/install/)                                                                 |
-| AWS CLI (optional) | AWS services               | [https://docs.aws.amazon.com/cli/latest/userguide/install-cliv2.html](https://docs.aws.amazon.com/cli/latest/userguide/install-cliv2.html) |
-| eksctl (optional)  | EKS cluster setup          | [https://eksctl.io/](https://eksctl.io/)                                                                                                   |
+| Tool               | Purpose                    |
+| ------------------ | -------------------------- |
+| Docker             | Container Runtime          |
+| kubectl            | Kubernetes CLI             |
+| Minikube           | Local Kubernetes Cluster   |
+| Helm               | Kubernetes Package Manager |
+| AWS CLI (Optional) | AWS Access                 |
+| eksctl (Optional)  | EKS Cluster Setup          |
 
+# 5. Verify Installation
 
-## Verify Installation
+## Docker
+
+```bash
+docker --version
+```
+
+## kubectl
 
 ```bash
 kubectl version --client
-helm version
-docker version
 ```
 
-# 4. Kubernetes Cluster Setup
+## Minikube
 
-## Option 1: Minikube (Local)
+```bash
+minikube version
+```
+
+## Helm
+
+```bash
+helm version
+```
+
+# 6. Kubernetes Cluster Setup
+
+# Option 1 — Minikube (Recommended for Local)
+
+## Start Minikube
 
 ```bash
 minikube start --driver=docker
+```
+
+## Enable NGINX Ingress
+
+```bash
 minikube addons enable ingress
 ```
 
-## Option 2: AWS EKS (Production-like)
+## Verify
+
+```bash
+kubectl get pods -n ingress-nginx
+```
+
+# Option 2 — AWS EKS (Production-Like)
 
 ```bash
 eksctl create cluster \
@@ -61,25 +111,66 @@ eksctl create cluster \
   --nodes 2
 ```
 
-# 5. Install Kong API Gateway
+---
+
+# 7. Install Kong API Gateway
+
+## Add Kong Helm Repository
 
 ```bash
 helm repo add kong https://charts.konghq.com
 helm repo update
-
-helm install kong kong/kong \
-  --namespace kong \
-  --create-namespace
 ```
 
-## Verify Installation
+---
+
+# Install Kong on Minikube
+
+```bash
+helm install kong kong/kong \
+  --namespace kong \
+  --create-namespace \
+  --set ingressController.installCRDs=false \
+  --set proxy.type=NodePort
+```
+
+# Verify Kong Installation
 
 ```bash
 kubectl get pods -n kong
+```
+
+```bash
 kubectl get svc -n kong
 ```
 
-# 6. Folder Structure
+Expected services:
+
+* kong-kong-proxy
+* kong-controller
+* kong-kong-manager
+
+
+# 8. Project Structure
+
+## Create Project Folder
+
+```bash
+mkdir kong-ecommerce-poc
+cd kong-ecommerce-poc
+```
+
+# Create YAML Files
+
+```bash
+touch namespace.yaml \
+user-service.yaml \
+order-service.yaml \
+payment-service.yaml \
+kong-ingress.yaml \
+alb-ingress.yaml
+```
+# Final Structure
 
 ```txt
 kong-ecommerce-poc/
@@ -91,189 +182,197 @@ kong-ecommerce-poc/
 ├── alb-ingress.yaml
 ```
 
-# 7. Deploy Microservices
-
-Good catch — that part is missing in most POCs and without it your README is not actually runnable.
-
-Below is your **FINAL missing piece: complete folder creation + file generation commands + content mapping**, ready to paste.
-
 ---
 
-# 6. Folder Structure 
-
-## Create Project Folder
-
-```bash id="mkroot"
-mkdir kong-ecommerce-poc
-cd kong-ecommerce-poc
-```
-
-## Create Files
-
-```bash id="mkfiles"
-touch namespace.yaml \
-user-service.yaml \
-order-service.yaml \
-payment-service.yaml \
-kong-ingress.yaml \
-alb-ingress.yaml
-```
-
-## Final Structure
-
-```txt id="finalstruct"
-kong-ecommerce-poc/
-├── namespace.yaml
-├── user-service.yaml
-├── order-service.yaml
-├── payment-service.yaml
-├── kong-ingress.yaml
-├── alb-ingress.yaml
-```
+# 9. Kubernetes Manifests
 
 # namespace.yaml
 
-```yaml id="nsfile"
+```yaml
 apiVersion: v1
 kind: Namespace
 metadata:
   name: demo
 ```
 
+---
+
 # user-service.yaml
 
-```yaml id="userfile"
+```yaml
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: user-service
   namespace: demo
+
 spec:
   replicas: 2
+
   selector:
     matchLabels:
       app: user
+
   template:
     metadata:
       labels:
         app: user
+
     spec:
       containers:
       - name: user
         image: hashicorp/http-echo
+
         args:
-        - "-text={\"service\":\"user\",\"api\":\"/profile\",\"status\":\"active\"}"
+        - "-text=User Service Working"
+
         ports:
         - containerPort: 5678
+
 ---
 apiVersion: v1
 kind: Service
+
 metadata:
   name: user-service
   namespace: demo
+
 spec:
   selector:
     app: user
+
   ports:
   - port: 80
     targetPort: 5678
 ```
 
+---
+
 # order-service.yaml
 
-```yaml id="orderfile"
+```yaml
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: order-service
   namespace: demo
+
 spec:
   replicas: 2
+
   selector:
     matchLabels:
       app: order
+
   template:
     metadata:
       labels:
         app: order
+
     spec:
       containers:
       - name: order
         image: hashicorp/http-echo
+
         args:
-        - "-text={\"service\":\"order\",\"api\":\"/create-order\",\"status\":\"processing\"}"
+        - "-text=Order Service Working"
+
         ports:
         - containerPort: 5678
+
 ---
 apiVersion: v1
 kind: Service
+
 metadata:
   name: order-service
   namespace: demo
+
 spec:
   selector:
     app: order
+
   ports:
   - port: 80
     targetPort: 5678
 ```
 
+---
+
 # payment-service.yaml
 
-```yaml id="paymentfile"
+```yaml
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: payment-service
   namespace: demo
+
 spec:
   replicas: 2
+
   selector:
     matchLabels:
       app: payment
+
   template:
     metadata:
       labels:
         app: payment
+
     spec:
       containers:
       - name: payment
         image: hashicorp/http-echo
+
         args:
-        - "-text={\"service\":\"payment\",\"api\":\"/charge\",\"status\":\"success\"}"
+        - "-text=Payment Service Working"
+
         ports:
         - containerPort: 5678
+
 ---
 apiVersion: v1
 kind: Service
+
 metadata:
   name: payment-service
   namespace: demo
+
 spec:
   selector:
     app: payment
+
   ports:
   - port: 80
     targetPort: 5678
 ```
 
+---
+
 # kong-ingress.yaml
 
-```yaml id="kongfile"
+```yaml
 apiVersion: networking.k8s.io/v1
 kind: Ingress
+
 metadata:
-  name: kong-ecommerce
+  name: kong-ingress
   namespace: demo
+
   annotations:
     konghq.com/strip-path: "true"
+
 spec:
   ingressClassName: kong
+
   rules:
   - http:
       paths:
+
       - path: /users
         pathType: Prefix
+
         backend:
           service:
             name: user-service
@@ -282,6 +381,7 @@ spec:
 
       - path: /orders
         pathType: Prefix
+
         backend:
           service:
             name: order-service
@@ -290,30 +390,38 @@ spec:
 
       - path: /payments
         pathType: Prefix
+
         backend:
           service:
             name: payment-service
             port:
               number: 80
 ```
+
+---
 
 # alb-ingress.yaml (AWS ONLY)
 
-```yaml id="albfile"
+```yaml
 apiVersion: networking.k8s.io/v1
 kind: Ingress
+
 metadata:
   name: aws-alb-ingress
   namespace: demo
+
   annotations:
     kubernetes.io/ingress.class: alb
     alb.ingress.kubernetes.io/scheme: internet-facing
+
 spec:
   rules:
   - http:
       paths:
+
       - path: /users
         pathType: Prefix
+
         backend:
           service:
             name: user-service
@@ -322,6 +430,7 @@ spec:
 
       - path: /orders
         pathType: Prefix
+
         backend:
           service:
             name: order-service
@@ -330,6 +439,7 @@ spec:
 
       - path: /payments
         pathType: Prefix
+
         backend:
           service:
             name: payment-service
@@ -337,144 +447,200 @@ spec:
               number: 80
 ```
 
-# FINAL USAGE FLOW (HOW TO RUN EVERYTHING)
+# 10. Deploy Application
 
-## 1️ Create folder
-
-```bash
-mkdir kong-ecommerce-poc && cd kong-ecommerce-poc
-```
-
-## 2️ Create files
-
-```bash
-touch *.yaml
-```
-
-## 3️ Apply everything
+## Apply Namespace
 
 ```bash
 kubectl apply -f namespace.yaml
+```
+
+## Deploy Services
+
+```bash
 kubectl apply -f user-service.yaml
 kubectl apply -f order-service.yaml
 kubectl apply -f payment-service.yaml
+```
+
+## Apply Kong Ingress
+
+```bash
 kubectl apply -f kong-ingress.yaml
 ```
-## Verify
+
+# 11. Verify Deployment
+
+## Check Pods
 
 ```bash
 kubectl get pods -n demo
+```
+
+## Check Services
+
+```bash
 kubectl get svc -n demo
 ```
 
-# 8. Kong Routing Configuration
-
-```bash
-kubectl apply -f kong-ingress.yaml
-```
-
-## Verify Ingress
+## Check Ingress
 
 ```bash
 kubectl get ingress -n demo
 ```
 
-# 9. Optional — AWS ALB Setup
+# 12. Access APIs
 
-```bash
-helm repo add eks https://aws.github.io/eks-charts
-helm repo update
+# Minikube
 
-helm install aws-load-balancer-controller eks/aws-load-balancer-controller \
-  -n kube-system
-```
-
-## Apply ALB Ingress
-
-```bash
-kubectl apply -f alb-ingress.yaml
-```
-
-# 10. Access APIs
-
-## Get Kong External IP
-
-### Minikube
+Get Kong Proxy URL:
 
 ```bash
 minikube service kong-kong-proxy -n kong
 ```
 
-### AWS EKS
+Example Output:
 
-```bash
-kubectl get svc -n kong
+```txt
+http://127.0.0.1:54321
 ```
 
-## Test APIs
+# 13. Test APIs
 
-### User Service
-
-```bash
-curl http://<KONG-IP>/users
-```
-
-### 📦 Order Service
+# User Service
 
 ```bash
-curl http://<KONG-IP>/orders
+curl http://127.0.0.1:54321/users
 ```
 
-### Payment Service
+Expected Response:
+
+```txt
+User Service Working
+```
+
+# Order Service
 
 ```bash
-curl http://<KONG-IP>/payments
+curl http://127.0.0.1:54321/orders
 ```
 
-# 11. Architecture Flow
+Expected Response:
+
+```txt
+Order Service Working
+```
+
+---
+
+# Payment Service
+
+```bash
+curl http://127.0.0.1:54321/payments
+```
+
+Expected Response:
+
+```txt
+Payment Service Working
+```
+
+# 14. AWS ALB Setup (Optional)
+
+## Install AWS Load Balancer Controller
+
+```bash
+helm repo add eks https://aws.github.io/eks-charts
+helm repo update
+```
+
+```bash
+helm install aws-load-balancer-controller eks/aws-load-balancer-controller \
+  -n kube-system
+```
+
+# Apply ALB Ingress
+
+```bash
+kubectl apply -f alb-ingress.yaml
+```
+
+# 15. AWS Production Architecture
 
 ```mermaid
 flowchart LR
-    Client["Client / Mobile App"] --> Kong["Kong API Gateway"]
 
-    Kong --> User["User Service"]
-    Kong --> Order["Order Service"]
-    Kong --> Payment["Payment Service"]
+User["Client"]
 
-    Order --> DB1[(Order DB)]
-    User --> DB2[(User DB)]
-    Payment --> DB3[(Payment DB)]
+User --> DNS["Route53"]
+
+DNS --> ALB["AWS ALB"]
+
+ALB --> Kong["Kong API Gateway"]
+
+Kong --> UserSvc["User Service"]
+Kong --> OrderSvc["Order Service"]
+Kong --> PaymentSvc["Payment Service"]
 ```
 
-# 12. AWS Production Flow (ALB + Kong)
+# 16. Troubleshooting
 
-```mermaid
-flowchart LR
-    User["Client"] --> DNS["Route53"]
+# Error: 404 Not Found
 
-    DNS --> ALB["AWS ALB"]
+Reapply ingress:
 
-    ALB --> Kong["Kong Ingress Controller"]
-
-    Kong --> UserSvc["User Service"]
-    Kong --> OrderSvc["Order Service"]
-    Kong --> PaymentSvc["Payment Service"]
+```bash
+kubectl apply -f kong-ingress.yaml
 ```
 
-# 13. Cleanup
+# Error: Connection Refused
 
-## Remove Kubernetes resources
+Restart Kong proxy:
+
+```bash
+minikube service kong-kong-proxy -n kong
+```
+
+---
+
+# Error: No Endpoints Available
+
+Check pods:
+
+```bash
+kubectl get pods -n demo
+```
+
+# 17. Cleanup
+
+## Delete Kubernetes Resources
 
 ```bash
 kubectl delete -f kong-ingress.yaml
+
 kubectl delete -f user-service.yaml
 kubectl delete -f order-service.yaml
 kubectl delete -f payment-service.yaml
+
 kubectl delete namespace demo
 ```
 
-## Delete EKS Cluster (if used)
+# Remove Kong
 
 ```bash
-eksctl delete cluster --name kong-cluster --region ap-south-1
+helm uninstall kong -n kong
+```
+
+# Stop Minikube
+
+```bash
+minikube stop
+```
+
+# Delete EKS Cluster (If Used)
+
+```bash
+eksctl delete cluster \
+  --name kong-cluster \
+  --region ap-south-1
 ```
