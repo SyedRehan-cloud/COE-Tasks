@@ -980,5 +980,243 @@ auto scale services
 
 👉 In real production systems, Kubernetes Kong is the industry standard.
 
+# 15. Kong Architecture Diagrams (VM vs Kubernetes)
+
+# 15.1 VM-Based Kong Architecture (Manual Setup)
+
+```
+
+```
+            +----------------------+
+            |      Clients         |
+            | (Browser / API / CLI)|
+            +----------+-----------+
+                       |
+                       v
+            +----------------------+
+            |   Kong Gateway VM    |
+            | (systemd + nginx)    |
+            |                      |
+            | - Routing engine     |
+            | - Plugins           |
+            | - Load balancing     |
+            +----------+-----------+
+                       |
+      +----------------+----------------+
+      |                                 |
+      v                                 v
+```
+
++-------------------+             +-------------------+
+| Backend Service 1 |             | Backend Service 2 |
+| 127.0.0.1:5678    |             | 127.0.0.1:5679    |
++-------------------+             +-------------------+
+
+```
+
+---
+
+## Key Idea:
+- Kong runs on a **single VM**
+- All routing is **static (kong.yml)**
+- Backend services are manually defined IPs
+
+---
+
+## Weakness:
+- No auto scaling
+- No service discovery
+- Manual updates required
+
+---
+
+# 15.2 Kubernetes-Based Kong Architecture
+
+```
+
+```
+             +----------------------+
+             |       Clients        |
+             +----------+-----------+
+                        |
+                        v
+             +----------------------+
+             |  Cloud LoadBalancer  |
+             +----------+-----------+
+                        |
+                        v
+    +--------------------------------------+
+    |   Kubernetes Cluster (Ingress Layer) |
+    |                                      |
+    |  Kong Ingress Controller (Pods)     |
+    |  - Dynamic routing (CRDs)           |
+    |  - Plugins                         |
+    +------------------+-------------------+
+                       |
+    +------------------+-------------------+
+    |                  |                   |
+    v                  v                   v
+```
+
++-------------+   +-------------+   +-------------+
+| Pod A       |   | Pod B       |   | Pod C       |
+| user-svc    |   | user-svc    |   | user-svc    |
++-------------+   +-------------+   +-------------+
+
+```
+
+---
+
+## Key Idea:
+- Kong runs as **distributed pods**
+- Kubernetes handles:
+  - Service discovery
+  - Load balancing
+  - Auto scaling
+
+---
+
+## Strength:
+- Fully automated
+- Cloud-native
+- Production-grade
+
 ---
 ```
+
+---
+
+# 16. Real Production Usage of Kong (Industry Practice)
+
+```markdown id="kong-prod-usage"
+# 16. How Kong is Used in Real Production Systems
+
+---
+
+# 16.1 Microservices API Gateway Layer
+
+Most companies place Kong as the **single entry point**:
+
+```
+
+Client Apps (Mobile/Web)
+|
+v
+API Gateway (Kong)
+|
+v
+Microservices (Auth, Orders, Payments)
+
+```
+
+---
+
+## Why?
+
+- Centralized authentication
+- Traffic control
+- Security enforcement
+- Observability layer
+
+---
+
+# 16.2 Authentication Layer (Very Common Use Case)
+
+Kong handles:
+- JWT Auth
+- API Keys
+- OAuth2
+- LDAP
+
+### Flow:
+```
+
+Client → Kong → Auth Plugin → Backend Service
+
+```
+
+---
+
+# 16.3 Rate Limiting & Traffic Control
+
+Used to protect backend systems.
+
+Example:
+- 1000 requests/min per user
+- Prevent API abuse
+
+```
+
+Kong Plugin → checks limit → allow/block request
+
+```
+
+---
+
+# 16.4 Canary & Blue-Green Deployments
+
+Kong can route traffic based on rules:
+
+### Example:
+```
+
+90% → v1 service
+10% → v2 service
+
+```
+
+Used for:
+- Safe deployments
+- A/B testing
+- Gradual rollout
+
+---
+
+# 16.5 Observability Hub
+
+Kong acts as a central telemetry point:
+
+```
+
+Kong
+├── Logs → ELK / Loki
+├── Metrics → Prometheus
+└── Traces → Jaeger / OTEL
+
+```
+
+---
+
+# 16.6 Multi-Cloud API Gateway
+
+Used across:
+- AWS
+- Azure
+- On-prem
+- Hybrid systems
+
+Kong becomes a **unified API layer**.
+
+---
+
+# 16.7 Enterprise Example Flow
+
+```
+
+Mobile App
+↓
+Cloud Load Balancer
+↓
+Kong API Gateway
+↓
+Auth Service
+↓
+Business Microservices
+↓
+Databases
+
+```
+# Final Insight
+
+👉 Kong is not just a gateway  
+👉 It is an **API control plane for distributed systems**
