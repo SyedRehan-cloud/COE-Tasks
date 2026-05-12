@@ -627,3 +627,494 @@ Apply plugins
       ↓
 Forward to service
 ```
+# Upstream in Kong (Detailed Explanation)
+
+In Kong, an **Upstream** is a logical group of backend servers/services that Kong can send traffic to.
+
+Instead of routing traffic directly to a single backend URL, Kong can route traffic to an **Upstream**, and that Upstream can contain multiple backend targets.
+
+This is how Kong performs:
+
+* Load balancing
+* High availability
+* Failover
+* Health checks
+* Traffic distribution
+
+---
+
+# Simple Definition
+
+## Without Upstream
+
+```yaml
+services:
+  - name: user-service
+    url: http://127.0.0.1:5678
+```
+
+Here:
+
+* Kong directly forwards requests to ONE backend server.
+
+Problem:
+
+* If backend dies → service fails.
+* No load balancing.
+
+---
+
+# With Upstream
+
+```yaml
+upstreams:
+  - name: user-upstream
+
+targets:
+  - upstream: user-upstream
+    target: 127.0.0.1:5678
+
+  - upstream: user-upstream
+    target: 127.0.0.1:5679
+```
+
+Now:
+
+* Kong sends traffic to MULTIPLE servers.
+* Kong distributes requests automatically.
+
+This is the real production architecture.
+
+---
+
+# Real-World Analogy
+
+Imagine:
+
+## Restaurant Example
+
+### Kong = Receptionist
+
+### Upstream = Kitchen Team
+
+### Targets = Individual chefs
+
+Customer request:
+
+```
+"I want food"
+```
+
+Receptionist decides:
+
+* Chef 1?
+* Chef 2?
+* Chef 3?
+
+depending on:
+
+* who is free
+* who is healthy
+* load balancing algorithm
+
+That kitchen group = Upstream.
+
+---
+
+# Kong Traffic Flow with Upstream
+
+```text
+Client Request
+      |
+      v
++----------------+
+| Kong Gateway   |
++----------------+
+      |
+      v
++----------------+
+|   Upstream     |
+| user-upstream  |
++----------------+
+   |     |     |
+   v     v     v
+Server1 Server2 Server3
+```
+
+---
+
+# Why Upstream is Important
+
+Without Upstream:
+
+* Single backend only
+* No scaling
+* No failover
+
+With Upstream:
+
+* Multiple backend instances
+* Traffic balancing
+* Automatic failover
+* Health checking
+* Better performance
+
+---
+
+# Core Components
+
+# 1. Service
+
+Defines:
+
+* What backend application exists
+
+Example:
+
+```yaml
+services:
+  - name: user-service
+    host: user-upstream
+    port: 80
+    protocol: http
+```
+
+Notice:
+
+* host = upstream name
+* NOT actual IP
+
+---
+
+# 2. Upstream
+
+Logical backend group.
+
+```yaml
+upstreams:
+  - name: user-upstream
+```
+
+---
+
+# 3. Targets
+
+Actual backend servers.
+
+```yaml
+targets:
+  - upstream: user-upstream
+    target: 127.0.0.1:5678
+
+  - upstream: user-upstream
+    target: 127.0.0.1:5679
+```
+
+---
+
+# Complete Flow
+
+```text
+1. Client sends request
+2. Kong matches route
+3. Kong selects service
+4. Service points to upstream
+5. Upstream selects target
+6. Request forwarded
+7. Response returned
+```
+
+---
+
+# Full Example
+
+```yaml
+_format_version: "3.0"
+
+services:
+  - name: user-service
+    host: user-upstream
+    port: 80
+    protocol: http
+
+    routes:
+      - name: user-route
+        paths:
+          - /users
+
+upstreams:
+  - name: user-upstream
+
+targets:
+  - upstream: user-upstream
+    target: 127.0.0.1:5678
+
+  - upstream: user-upstream
+    target: 127.0.0.1:5679
+
+  - upstream: user-upstream
+    target: 127.0.0.1:5680
+```
+
+---
+
+# What Happens Internally
+
+Suppose request comes:
+
+```bash
+curl http://localhost:8000/users
+```
+
+Kong internally:
+
+---
+
+## Step 1 — Route Matching
+
+Kong checks:
+
+```yaml
+paths:
+  - /users
+```
+
+Matched.
+
+---
+
+## Step 2 — Service Selection
+
+Kong selects:
+
+```yaml
+service: user-service
+```
+
+---
+
+## Step 3 — Upstream Resolution
+
+Service host:
+
+```yaml
+host: user-upstream
+```
+
+Kong now looks for upstream named:
+
+* user-upstream
+
+---
+
+## Step 4 — Load Balancing
+
+Kong chooses one target:
+
+* 5678
+* 5679
+* 5680
+
+using balancing algorithm.
+
+---
+
+## Step 5 — Request Forwarding
+
+Request forwarded to selected backend.
+
+---
+
+# Load Balancing Algorithms Used with Upstreams
+
+Kong Upstreams support multiple balancing algorithms.
+
+---
+
+# 1. Round Robin (Default)
+
+```text
+Req1 → Server1
+Req2 → Server2
+Req3 → Server3
+Req4 → Server1
+```
+
+Balanced equally.
+
+---
+
+# 2. Least Connections
+
+Kong sends traffic to server with:
+
+* fewest active connections
+
+Good for:
+
+* uneven workloads
+
+---
+
+# 3. Consistent Hashing
+
+Same user always goes to same backend.
+
+Used for:
+
+* sessions
+* caching
+* sticky behavior
+
+---
+
+# 4. Latency-Based
+
+Traffic sent to fastest backend.
+
+---
+
+# Health Checks in Upstreams
+
+Kong continuously checks backend health.
+
+If server dies:
+
+* Kong removes it automatically.
+
+---
+
+# Passive Health Checks
+
+Based on failed requests.
+
+Example:
+
+* 5xx errors
+* timeouts
+
+---
+
+# Active Health Checks
+
+Kong periodically pings targets.
+
+Example:
+
+```text
+GET /health
+```
+
+---
+
+# Example with Health Checks
+
+```yaml
+upstreams:
+  - name: user-upstream
+    healthchecks:
+      active:
+        http_path: /health
+```
+
+---
+
+# Difference: Service vs Upstream
+
+| Component | Purpose                     |
+| --------- | --------------------------- |
+| Service   | Defines backend application |
+| Upstream  | Group of backend servers    |
+| Target    | Actual backend server       |
+
+---
+
+# VM vs Kubernetes Upstream Usage
+
+# VM Setup
+
+You manually define targets:
+
+```yaml
+targets:
+  - 127.0.0.1:5678
+```
+
+Manual scaling.
+
+---
+
+# Kubernetes Setup
+
+Kong automatically discovers pods via Kubernetes Service.
+
+Dynamic targets.
+
+---
+
+# Production Importance
+
+Upstreams are critical for:
+
+* scalability
+* resilience
+* high availability
+* zero downtime deployments
+
+Without upstreams:
+
+* Kong is just a router.
+
+With upstreams:
+
+* Kong becomes a full API traffic manager.
+
+---
+
+# Final Understanding
+
+## Route
+
+Decides:
+
+> WHICH request matches
+
+---
+
+## Service
+
+Decides:
+
+> WHICH application handles request
+
+---
+
+## Upstream
+
+Decides:
+
+> WHICH backend instance receives request
+
+---
+
+## Target
+
+Actual server instance
+
+---
+
+# Complete Mental Model
+
+```text
+ROUTE
+  ↓
+SERVICE
+  ↓
+UPSTREAM
+  ↓
+TARGET
+  ↓
+BACKEND SERVER
+```
+
+This is the core internal architecture of Kong Gateway.
