@@ -201,17 +201,6 @@ services:
             IMPORTANT:
               Should always be last logical safety route.
 
-Perfect — this is exactly how you start thinking like a **real API Gateway engineer**.
-
-I’ll walk through your exact Kong config and explain:
-
-* 🔁 What happens when a request comes in
-* 🧠 How Kong evaluates each route
-* 🎯 Why it matches or does NOT match
-* 📦 Final upstream forwarding behavior
-
----
-
 # ⚙️ FIRST: KONG ROUTING MENTAL MODEL
 
 Every request goes through this pipeline:
@@ -327,7 +316,7 @@ paths: /method
 methods: [GET]
 ```
 
-## 🧪 Requests
+## Requests
 
 ### Allowed:
 
@@ -341,7 +330,7 @@ curl http://localhost:8000/method
 curl -X POST http://localhost:8000/method
 ```
 
-## 🔍 Kong logic:
+## Kong logic:
 
 1. Path matches `/method` ✔
 2. Method check:
@@ -352,7 +341,7 @@ curl -X POST http://localhost:8000/method
 | POST   | ❌       |
 | PUT    | ❌       |
 
-## 📦 Behavior:
+## Behavior:
 
 * POST request will NOT hit this route
 * It will fallback to another route or 404
@@ -374,13 +363,13 @@ headers:
     - v1
 ```
 
-## 🧪 Request
+## Request
 
 ```bash
 curl http://localhost:8000/versioned -H "version:v1"
 ```
 
-## 🔍 Kong checks:
+## Kong checks:
 
 1. Path = `/versioned` ✔
 2. Header exists?
@@ -389,7 +378,7 @@ curl http://localhost:8000/versioned -H "version:v1"
 version: v1 ✔
 ```
 
-## ❌ If missing header:
+## If missing header:
 
 ```bash
 curl http://localhost:8000/versioned
@@ -397,11 +386,11 @@ curl http://localhost:8000/versioned
 
 → NO MATCH
 
-## 📦 Behavior:
+## Behavior:
 
 Only requests with correct header go to this service.
 
-## 🧠 Summary
+## Summary
 
 | Condition         | Required |
 | ----------------- | -------- |
@@ -417,13 +406,13 @@ paths:
   - /query
 ```
 
-## 🧪 Request
+## Request
 
 ```bash
 curl "http://localhost:8000/query?type=admin"
 ```
 
-## 🔍 Important truth:
+## Important truth:
 
 👉 Kong itself does NOT match query params in YAML routes by default.
 
@@ -446,7 +435,7 @@ Usually combined with:
 * custom logic
 * or app-level filtering
 
-## 🧠 Summary
+## Summary
 
 | Feature     | Behavior             |
 | ----------- | -------------------- |
@@ -462,14 +451,14 @@ paths:
   - ~/users/\d+
 ```
 
-## 🧪 Requests
+## Requests
 
 ```bash
 curl http://localhost:8000/users/123
 curl http://localhost:8000/users/9999
 ```
 
-## 🔍 Kong logic:
+## Kong logic:
 
 Regex match happens:
 
@@ -478,18 +467,18 @@ Regex match happens:
 /users/abc  ❌ no match
 ```
 
-## 📦 Forwarding:
+## Forwarding:
 
 ```
 http://127.0.0.1:5678/users/123
 ```
 
-## 🧠 Key idea:
+## Key idea:
 
 * No stripping unless configured
 * Very powerful for dynamic APIs
 
-## 🧠 Summary
+## Summary
 
 | Feature  | Behavior    |
 | -------- | ----------- |
@@ -513,7 +502,7 @@ curl http://localhost:8000/orders
 curl http://localhost:8000/purchases
 ```
 
-## 🔍 Kong logic:
+## Kong logic:
 
 Same service, multiple entry points.
 
@@ -522,7 +511,7 @@ Same service, multiple entry points.
 | /orders    | ✔     |
 | /purchases | ✔     |
 
-## 📦 Forwarding:
+## Forwarding:
 
 ```
 http://127.0.0.1:5678/
@@ -530,7 +519,7 @@ http://127.0.0.1:5678/
 
 (because strip_path: true)
 
-## 🧠 Summary
+## Summary
 
 | Feature        | Benefit      |
 | -------------- | ------------ |
@@ -546,7 +535,7 @@ paths:
   - /
 ```
 
-## 🧪 Request
+## Request
 
 ```bash
 curl http://localhost:8000/anything-unknown
@@ -563,17 +552,17 @@ Kong tries all routes:
 | /orders | ❌          |
 | /       | ✔ fallback |
 
-## 📦 Final behavior:
+## Final behavior:
 
 All unmatched requests go here.
 
-## 🧠 VERY IMPORTANT:
+## VERY IMPORTANT:
 
 This should be LAST route logically.
 
 ---
 
-# 🧠 FINAL EXECUTION ORDER (REAL KONG BEHAVIOR)
+# FINAL EXECUTION ORDER (REAL KONG BEHAVIOR)
 
 When request comes:
 
@@ -587,9 +576,7 @@ When request comes:
 7. Pick highest priority route
 ```
 
----
-
-# 🚀 ONE REAL-WORLD EXAMPLE FLOW
+# ONE REAL-WORLD EXAMPLE FLOW
 
 ## Request:
 
@@ -606,11 +593,10 @@ curl http://users.local:8000/users/123 -H "version:v1"
 | Header match | YES (version=v1)       |
 | Method match | default GET            |
 
-👉 BUT ONLY ONE ROUTE WINS (best score)
+BUT ONLY ONE ROUTE WINS (best score)
 
----
 
-# 🎯 FINAL INTUITION
+# FINAL INTUITION
 
 Think of Kong like this:
 
@@ -627,7 +613,7 @@ Apply plugins
       ↓
 Forward to service
 ```
-# Upstream in Kong (Detailed Explanation)
+# Upstream in Kong
 
 In Kong, an **Upstream** is a logical group of backend servers/services that Kong can send traffic to.
 
@@ -640,8 +626,6 @@ This is how Kong performs:
 * Failover
 * Health checks
 * Traffic distribution
-
----
 
 # Simple Definition
 
@@ -661,9 +645,7 @@ Problem:
 
 * If backend dies → service fails.
 * No load balancing.
-
----
-
+  
 # With Upstream
 
 ```yaml
@@ -719,7 +701,6 @@ depending on:
 
 That kitchen group = Upstream.
 
----
 
 # Kong Traffic Flow with Upstream
 
@@ -759,7 +740,6 @@ With Upstream:
 * Health checking
 * Better performance
 
----
 
 # Core Components
 
@@ -810,8 +790,6 @@ targets:
     target: 127.0.0.1:5679
 ```
 
----
-
 # Complete Flow
 
 ```text
@@ -823,8 +801,6 @@ targets:
 6. Request forwarded
 7. Response returned
 ```
-
----
 
 # Full Example
 
@@ -931,7 +907,7 @@ Kong Upstreams support multiple balancing algorithms.
 
 ---
 
-# 1. Round Robin (Default)
+# 1. Round Robin 
 
 ```text
 Req1 → Server1
