@@ -1,4 +1,4 @@
-# **Ansible Role – Kong API Gateway (Standalone / DB-less / PostgreSQL Mode)**
+# # **Ansible Role – Kong API Gateway (Complete End-to-End Implementation Guide)**
 
 <p align="center">
 <img width="420" height="260" alt="kong-logo" src="https://github.com/Kong/docs.konghq.com/assets/kong-logo.png" />
@@ -6,208 +6,135 @@
 
 ---
 
-| **Author** | **Created on** | **Version** | **Last Edited On** | **Pre Reviewer** | **L0 Reviewer** | **L1 Reviewer** | **L2 Reviewer** |
-| ---------- | -------------- | ----------- | ------------------ | ---------------- | --------------- | --------------- | --------------- |
-| Rehan      | 13-05-2026     | 1.0         | 13-05-2026         | Internal Team    | TBD             | TBD             | TBD             |
+| **Author** | **Created on** | **Version** | **Last Updated** |
+| ---------- | -------------- | ----------- | ---------------- |
+| Rehan      | 13-05-2026     | 2.0         | 13-05-2026       |
 
 ---
 
-<details>
-<summary><h2><strong>Table of Contents</strong></h2></summary>
+# 🧭 Table of Contents
 
-* [Introduction](#introduction)
-* [Role Objectives](#role-objectives)
-* [Kong Architecture Overview](#kong-architecture-overview)
-* [Deployment Modes Supported](#deployment-modes-supported)
-* [OS Compatibility Design](#os-compatibility-design)
-* [Directory Structure](#directory-structure)
-* [Role Architecture](#role-architecture)
-* [Role Variables](#role-variables)
-* [Dynamic Inventory Design (AWS EC2)](#dynamic-inventory-design-aws-ec2)
-* [Ansible Configuration (ansible.cfg)](#ansible-configuration-ansiblecfg)
-* [Playbook Structure](#playbook-structure)
-* [Task Execution Flow](#task-execution-flow)
-* [Tasks Breakdown](#tasks-breakdown)
-* [Templates (Jinja2)](#templates-jinja2)
-* [Handlers](#handlers)
-* [Service Management Design](#service-management-design)
-* [Execution Workflow](#execution-workflow)
-* [Proxy / Bastion Connectivity Design](#proxy--bastion-connectivity-design)
-* [Flow Diagram](#flow-diagram)
-* [Best Practices](#best-practices)
-* [Troubleshooting Guide](#troubleshooting-guide)
-* [Conclusion](#conclusion)
-* [References](#references)
+* Introduction
+* Architecture Overview
+* Directory Structure (FULL EXPLAINED)
+* ansible.cfg (Line-by-line explanation)
+* Inventory (AWS Dynamic Inventory FULL)
+* SSH Bastion Setup (Critical)
+* Playbook (site.yml FULL FLOW)
+* Role: kong-standalone (FULL FILE BREAKDOWN)
 
-</details>
+  * defaults
+  * vars
+  * tasks
+  * templates
+  * handlers
+* Execution Flow (Step-by-step runtime)
+* Commands to Run Project
+* Debugging Guide (your errors fixed)
+* Security Design
+* Final Architecture Flow
 
 ---
 
-# **Introduction**
+# 🧠 1. Introduction
 
-This document defines a complete automation framework for deploying **Kong API Gateway** using **Ansible Roles** in cloud environments (AWS EC2-based dynamic infrastructure).
+This project automates the deployment of **Kong API Gateway** using Ansible on AWS EC2 infrastructure with:
 
-The role is designed to:
-
-* Install Kong Gateway
-* Configure DB-less or PostgreSQL-backed mode
-* Deploy declarative configuration (`kong.yml`)
-* Configure systemd service for Kong
-* Support dynamic AWS EC2 inventory
-* Enable HA-ready architecture design
+* Dynamic EC2 inventory
+* Bastion host SSH access
+* DB-less + PostgreSQL modes
+* Systemd-based service management
+* Plugin-based API gateway configuration
 
 ---
 
-# **Role Objectives**
+# 🏗️ 2. Architecture Overview
 
-This Ansible role is built to achieve:
-
-* Automated Kong installation from official `.deb` package
-* Support for **DB-less mode (Declarative)** and **PostgreSQL mode**
-* Dynamic configuration using Jinja2 templates
-* Multi-node deployment using AWS EC2 dynamic inventory
-* Standardized service lifecycle management
-* Bastion-host-based secure SSH access
-
----
-
-# **Kong Architecture Overview**
-
-Kong Gateway is an API gateway that sits between clients and backend services.
-
-It provides:
-
-* Routing
-* Authentication (JWT, OAuth, API keys)
-* Rate limiting
-* Logging and monitoring
-* Load balancing
-
-### Core Components:
-
-* **Kong Proxy (8000)** → Handles client requests
-* **Kong Admin API (8001)** → Management interface
-* **Database (optional)** → PostgreSQL (for DB mode)
-
----
-
-# **Deployment Modes Supported**
-
-## 1. DB-less Mode (Recommended for Dev/Test)
-
-* No database required
-* Uses declarative config (`kong.yml`)
-* Fast startup and lightweight
-
-Configured via:
-
-```ini
-database = off
-declarative_config = /etc/kong/kong.yml
+```
+Local Machine (Ansible)
+        |
+        v
+Bastion Host (Public EC2 - 3.135.65.89)
+        |
+        v
+Private EC2 Instances (172.31.x.x)
+        |
+        v
+Kong Gateway + Backend Services
 ```
 
 ---
 
-## 2. PostgreSQL Mode (Production)
-
-* Uses PostgreSQL backend
-* Supports full Kong features (analytics, dynamic config)
-
-Configured via:
-
-```ini
-database = postgres
-pg_host = {{ kong_pg_host }}
-```
-
----
-
-# **OS Compatibility Design**
-
-This role is primarily designed for:
-
-* Ubuntu 20.04+
-* Ubuntu 22.04+
-* AWS Ubuntu 26.04 (your current setup)
-
-It can be extended to:
-
-* Debian
-* Amazon Linux (with package modification)
-
----
-
-# **Directory Structure**
+# 📁 3. FULL DIRECTORY STRUCTURE (EXPLAINED)
 
 ```
 ansible-kong-project/
 │
-├── ansible.cfg
-├── inventories/
+├── ansible.cfg                # Ansible configuration
+├── inventories/               # Dynamic AWS inventory
 │   ├── dev/
-│   ├── prod/
-│   └── dr/
+│   ├── dr/
+│   └── prod/
 │
 ├── playbooks/
-│   └── site.yml
+│   ├── site.yml               # MAIN PLAYBOOK
 │
 └── roles/
-    └── kong-standalone/
+    └── kong-standalone/       # MAIN ROLE
         ├── defaults/
+        │   └── main.yml       # default variables
+        │
         ├── vars/
+        │   └── main.yml       # fixed variables
+        │
         ├── tasks/
+        │   ├── main.yml       # task orchestrator
+        │   ├── install.yml    # installation
+        │   ├── postgres.yml   # DB setup
+        │   ├── config.yml     # config generation
+        │   └── service.yml    # service control
+        │
         ├── templates/
+        │   ├── kong.conf.j2   # main config
+        │   ├── kong.yml.j2     # declarative config
+        │   └── kong.service.j2 # systemd service
+        │
         ├── handlers/
+        │   └── main.yml       # restart/reload handlers
+        │
         ├── files/
         └── meta/
 ```
 
 ---
 
-# **Role Architecture**
+# ⚙️ 4. ansible.cfg (DETAILED)
 
-| Component  | Purpose                                |
-| ---------- | -------------------------------------- |
-| defaults/  | Default variables (overridable safely) |
-| vars/      | Hard-defined variables                 |
-| tasks/     | Execution logic                        |
-| templates/ | Jinja2 configuration files             |
-| handlers/  | Service restart/reload logic           |
-| files/     | Static files (unused currently)        |
+```ini
+[defaults]
+inventory = inventories/prod/aws_ec2.yml   # AWS dynamic inventory
+roles_path = ./roles                       # role directory
+host_key_checking = False                  # avoid SSH prompts
+remote_user = ubuntu                       # EC2 default user
+private_key_file = ~/.ssh/kong-key.pem     # SSH key
 
----
+[inventory]
+enable_plugins = amazon.aws.aws_ec2        # enable AWS plugin
 
-# **Role Variables**
-
-## defaults/main.yml
-
-```yaml
-kong_version: "3.9.0"
-kong_mode: "dbless"
-kong_admin_listen: "127.0.0.1:8001"
-kong_proxy_listen: "0.0.0.0:8000"
-
-kong_pg_host: "127.0.0.1"
-kong_pg_port: 5432
-kong_pg_database: "kong"
-kong_pg_user: "kong"
-kong_pg_password: "kong"
-
-backend_host: "127.0.0.1"
+[ssh_connection]
+ssh_args = -o ProxyJump=ubuntu@3.135.65.89
 ```
 
-### Explanation:
+### Meaning:
 
-* `kong_version` → Version to install
-* `kong_mode` → DB-less or postgres
-* `kong_admin_listen` → Admin API binding
-* `backend_host` → Upstream services target
+* Uses AWS dynamic inventory
+* Connects via bastion host
+* Uses Ubuntu user
+* Uses EC2 private key
 
 ---
 
-# **Dynamic Inventory Design (AWS EC2)**
-
-Your role uses AWS EC2 dynamic inventory plugin:
+# 🌩️ 5. AWS INVENTORY (FULL EXPLANATION)
 
 ```yaml
 plugin: amazon.aws.aws_ec2
@@ -219,52 +146,53 @@ filters:
   instance-state-name: running
   tag:Environment: Prod
 
+hostnames:
+  - private-ip-address
+
 keyed_groups:
   - key: tags.Role
     prefix: role
-
-hostnames:
-  - private-ip-address
 ```
 
-### Explanation:
+### What happens:
 
-* Pulls live AWS instances
-* Groups by `Role` tag → role_kong, role_postgres
-* Uses private IPs for internal communication
+* Pulls all running EC2 instances
+* Filters only Production
+* Groups machines by Role tag:
+
+  * role_kong
+  * role_postgres
 
 ---
 
-# **Ansible Configuration (ansible.cfg)**
+# 🔐 6. SSH BASTION SETUP (IMPORTANT)
 
-```ini
-[defaults]
-inventory = inventories/prod/aws_ec2.yml
-roles_path = ./roles
-host_key_checking = False
-remote_user = ubuntu
-private_key_file = ~/.ssh/kong-key.pem
+```bash
+cat <<EOF > ~/.ssh/config
 
-[inventory]
-enable_plugins = amazon.aws.aws_ec2
+Host bastion
+    HostName 3.135.65.89
+    User ubuntu
+    IdentityFile ~/.ssh/kong-key.pem
 
-[ssh_connection]
-ssh_args = -o ProxyJump=ubuntu@3.135.65.89
+Host 172.31.*
+    User ubuntu
+    IdentityFile ~/.ssh/kong-key.pem
+    ProxyJump bastion
+EOF
 ```
 
-### Explanation:
+### Purpose:
 
-* `remote_user` → SSH user on EC2
-* `roles_path` → where Ansible finds roles
-* `ProxyJump` → bastion host access
-* `host_key_checking` → disables prompt for known_hosts issues
+* All private EC2s accessed via bastion
+* No public access to backend servers
 
 ---
 
-# **Playbook Structure**
+# 🚀 7. PLAYBOOK (site.yml FULL FLOW)
 
 ```yaml
-- name: Deploy Kong HA Cluster
+- name: Deploy Kong API Gateway
   hosts: role_kong
   become: yes
   serial: 1
@@ -276,50 +204,90 @@ ssh_args = -o ProxyJump=ubuntu@3.135.65.89
 
 ### Meaning:
 
-* `hosts: role_kong` → targets AWS group
-* `serial: 1` → rolling deployment (one node at a time)
-* `strategy: free` → parallel execution allowed per task
+* `serial: 1` → one server at a time (safe rollout)
+* `role_kong` → dynamic inventory group
+* `become: yes` → sudo required
 
 ---
 
-# **Task Execution Flow**
-
-```
-main.yml
- ├── install.yml
- ├── postgres.yml (conditional)
- ├── config.yml
- └── service.yml
-```
+# 🧩 8. ROLE BREAKDOWN (FULL DETAIL)
 
 ---
 
-# **Tasks Breakdown**
-
-## 1. Install Kong (install.yml)
+## 📌 defaults/main.yml
 
 ```yaml
-- name: Download Kong package
-- name: Install Kong package
-- name: Hold version
+kong_version: "3.9.0"
+kong_mode: "dbless"
+kong_admin_listen: "127.0.0.1:8001"
+kong_proxy_listen: "0.0.0.0:8000"
+backend_host: "127.0.0.1"
 ```
 
 ### Purpose:
 
-* Downloads `.deb` package from Kong repo
-* Prevents accidental upgrades
+Default safe configuration values
 
 ---
 
-## 2. PostgreSQL Setup (postgres.yml)
-
-Runs only if:
+## 📌 vars/main.yml
 
 ```yaml
-when: kong_mode == "postgres"
+kong_version: "3.9.0"
 ```
 
-Tasks:
+### Purpose:
+
+Hard override variables (not easily changed)
+
+---
+
+# 🛠️ TASKS FLOW
+
+## 📌 tasks/main.yml
+
+```yaml
+- import_tasks: install.yml
+- import_tasks: postgres.yml
+  when: kong_mode == "postgres"
+- import_tasks: config.yml
+- import_tasks: service.yml
+```
+
+### Flow:
+
+1. Install Kong
+2. Setup DB if required
+3. Configure files
+4. Start service
+
+---
+
+## 📌 install.yml
+
+### What it does:
+
+```yaml
+- Download Kong .deb package
+- Install package using apt
+- Hold version to prevent auto-upgrade
+```
+
+### Why:
+
+Prevents version mismatch in clusters
+
+---
+
+## 📌 postgres.yml
+
+### Runs only if:
+
+```yaml
+kong_mode == "postgres"
+```
+
+### Tasks:
 
 * Install PostgreSQL
 * Create DB user
@@ -327,203 +295,121 @@ Tasks:
 
 ---
 
-## 3. Configuration (config.yml)
+## 📌 config.yml
 
-Tasks:
+### Tasks:
 
 * Create `/etc/kong`
-* Deploy `kong.conf`
-* Deploy `kong.yml` (DB-less only)
+* Deploy kong.conf
+* Deploy kong.yml (DB-less only)
 * Deploy systemd service
-* Reload systemd daemon
+* Reload systemd
 
 ---
 
-## 4. Service Management (service.yml)
+## 📌 service.yml
 
 * Run migrations (Postgres mode)
-* Start Kong service
-* Enable on boot
-* Verify Admin API
+* Start Kong
+* Enable service
+* Verify API (8001)
 
 ---
 
-# **Templates (Jinja2)**
+# 🧾 9. TEMPLATES (JINJA2)
 
-## kong.conf.j2
+---
+
+## 📌 kong.conf.j2
 
 ```jinja2
 database = {{ 'off' if kong_mode == 'dbless' else 'postgres' }}
 ```
 
-### Logic:
+### Meaning:
 
-* If DB-less → disables DB
-* If postgres → enables DB connection
+Switch DB mode dynamically
 
 ---
 
-## kong.yml.j2 (Declarative config)
+## 📌 kong.yml.j2
 
 Defines:
 
 * Services
 * Routes
-* Plugins (JWT, rate limiting, logging)
+* Plugins:
 
-Example:
-
-```yaml
-services:
-  - name: user-service
-    url: http://{{ backend_host }}:5678
-```
+  * JWT authentication
+  * Rate limiting
+  * HTTP logging
 
 ### Purpose:
 
-This replaces database configuration in DB-less mode.
+This is **DB-less configuration engine**
 
 ---
 
-## kong.service.j2
+## 📌 kong.service.j2
 
-Systemd unit file:
+Systemd service file:
 
-* Defines service startup
-* Restart policies
-* ExecStart / ExecReload commands
+* Start Kong on boot
+* Restart on failure
+* Reload support
 
 ---
 
-# **Handlers**
+# 🔁 10. HANDLERS
 
 ```yaml
 - name: restart kong
   command: kong restart -c /etc/kong/kong.conf
 ```
 
-### Purpose:
+### Triggered when:
 
-Triggered when:
-
-* config file changes
-* systemd file changes
+* config changes
+* service file changes
 
 ---
 
-# **Service Management Design**
+# ▶️ 11. HOW TO RUN (COMMANDS)
 
-Kong runs as a systemd service:
+## Step 1: Check inventory
 
 ```bash
-systemctl start kong
-systemctl enable kong
+ansible-inventory --graph
 ```
 
-Ensures:
-
-* Auto restart on reboot
-* Process supervision
-* Logging via journalctl
-
----
-
-# **Execution Workflow**
-
-1. AWS inventory fetches EC2 instances
-2. Hosts grouped by role_kong
-3. Ansible connects via bastion host
-4. Kong role executes:
-
-   * Install
-   * Configure
-   * Start service
-5. Verification via Admin API (8001)
-
----
-
-# **Proxy / Bastion Connectivity Design**
-
-Your environment uses:
-
-```
-Local Machine → Bastion (3.135.65.89) → Private EC2 (172.31.x.x)
-```
-
-### SSH config:
+## Step 2: Test SSH
 
 ```bash
-Host bastion
-    HostName 3.135.65.89
-    User ubuntu
-    IdentityFile ~/.ssh/kong-key.pem
-
-Host 172.31.*
-    ProxyJump bastion
+ansible all -m ping
 ```
 
-### Purpose:
+## Step 3: Run playbook
 
-* Secure private subnet access
-* No public IP exposure for backend nodes
-
----
-
-# **Flow Diagram**
-
+```bash
+ansible-playbook playbooks/site.yml
 ```
-User (Ansible CLI)
-        |
-        v
-AWS EC2 Dynamic Inventory
-        |
-        v
-Bastion Host (Public EC2)
-        |
-        v
-Private EC2 Nodes (Kong)
-        |
-        v
-Install → Configure → Start Kong
+
+## Step 4: Verify Kong
+
+```bash
+curl http://localhost:8001
+systemctl status kong
 ```
 
 ---
 
-# **Best Practices**
-
-| Practice                 | Benefit                |
-| ------------------------ | ---------------------- |
-| Use roles                | Reusability            |
-| Use DB-less mode for dev | Faster deployments     |
-| Use ProxyJump            | Secure access          |
-| Use templates            | Dynamic config         |
-| Use serial: 1            | Zero-downtime upgrades |
-| Use handlers             | Controlled restarts    |
+# 🐛 12. DEBUGGING (YOUR ISSUES FIXED)
 
 ---
 
-# **Troubleshooting Guide**
+## ❌ Issue 1: Role not found
 
-## 1. SSH Timeout
-
-Cause:
-
-* No bastion route OR security group blocked
-
-Fix:
-
-* Ensure `ProxyJump` configured
-* Allow port 22 from bastion
-
----
-
-## 2. Role not found error
-
-Cause:
-
-* Wrong roles_path
-
-Fix:
+✔ Fix:
 
 ```ini
 roles_path = ./roles
@@ -531,37 +417,66 @@ roles_path = ./roles
 
 ---
 
-## 3. Kong not starting
+## ❌ Issue 2: SSH timeout
 
-Cause:
+✔ Cause:
 
-* config error in kong.conf
+* Missing ProxyJump
+* SG blocking port 22
 
-Fix:
+---
+
+## ❌ Issue 3: Identity file error
+
+✔ Fix:
 
 ```bash
-kong check
+chmod 600 ~/.ssh/kong-key.pem
 ```
 
 ---
 
-# **Conclusion**
+## ❌ Issue 4: Ansible can’t find SSH config
 
-This Ansible role provides a fully automated, production-ready framework for deploying Kong API Gateway with:
+✔ Fix:
 
-* Multi-mode support (DB-less + PostgreSQL)
-* AWS dynamic infrastructure compatibility
-* Secure bastion-based access
-* Scalable HA-ready architecture
-* Fully idempotent deployment model
+```bash
+mkdir -p ~/.ssh
+```
 
 ---
 
-# **References**
+# 🔐 13. SECURITY DESIGN
 
-| Topic             | Link                                                                                                                                                                           |
-| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Kong Gateway Docs | [https://docs.konghq.com/gateway/latest/](https://docs.konghq.com/gateway/latest/)                                                                                             |
-| Ansible Roles     | [https://docs.ansible.com/ansible/latest/playbook_guide/playbooks_reuse_roles.html](https://docs.ansible.com/ansible/latest/playbook_guide/playbooks_reuse_roles.html)         |
-| AWS EC2 Inventory | [https://docs.ansible.com/ansible/latest/collections/amazon/aws/aws_ec2_inventory.html](https://docs.ansible.com/ansible/latest/collections/amazon/aws/aws_ec2_inventory.html) |
-| Jinja2 Templates  | [https://jinja.palletsprojects.com/en/stable/](https://jinja.palletsprojects.com/en/stable/)                                                                                   |
+* Bastion only public access
+* Private EC2 fully isolated
+* Kong Admin API not exposed publicly
+* SSH key-based authentication only
+
+---
+
+# 📊 14. FINAL FLOW
+
+```
+Ansible CLI
+   ↓
+AWS Dynamic Inventory
+   ↓
+Bastion Host
+   ↓
+Private EC2 (Kong)
+   ↓
+Install → Configure → Run → Validate
+```
+
+---
+
+# 🎯 FINAL SUMMARY
+
+This role is a:
+
+✔ Production-ready API gateway automation
+✔ AWS dynamic infrastructure deployment system
+✔ Bastion-secured architecture
+✔ Multi-mode Kong deployment (DB-less + DB)
+✔ Fully idempotent Ansible role
