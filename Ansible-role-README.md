@@ -112,17 +112,17 @@ ansible-kong-project/
 
 ```ini
 [defaults]
-inventory = inventories/prod/aws_ec2.yml   # AWS dynamic inventory
-roles_path = ./roles                       # role directory
-host_key_checking = False                  # avoid SSH prompts
-remote_user = ubuntu                       # EC2 default user
-private_key_file = ~/.ssh/kong-key.pem     # SSH key
+inventory = inventories/prod/aws_ec2.yml
+roles_path = ./roles
+host_key_checking = False
+remote_user = ubuntu
+private_key_file = /home/rehan/.ssh/kong-key.pem
 
 [inventory]
-enable_plugins = amazon.aws.aws_ec2        # enable AWS plugin
+enable_plugins = amazon.aws.aws_ec2
 
 [ssh_connection]
-ssh_args = -o ProxyJump=ubuntu@3.135.65.89
+ssh_args = -F /home/rehan/.ssh/config
 ```
 
 ### Meaning:
@@ -168,6 +168,11 @@ keyed_groups:
 # 🔐 6. SSH BASTION SETUP (IMPORTANT)
 
 ```bash
+mkdir -p ~/.ssh
+touch ~/.ssh/config
+chmod 700 ~/.ssh
+chmod 600 ~/.ssh/config
+
 cat <<EOF > ~/.ssh/config
 
 Host bastion
@@ -248,9 +253,12 @@ Hard override variables (not easily changed)
 
 ```yaml
 - import_tasks: install.yml
+
 - import_tasks: postgres.yml
   when: kong_mode == "postgres"
+
 - import_tasks: config.yml
+
 - import_tasks: service.yml
 ```
 
@@ -290,8 +298,52 @@ kong_mode == "postgres"
 ### Tasks:
 
 * Install PostgreSQL
-* Create DB user
+* Start PostgreSQL service
+* Create Kong database user
 * Create Kong database
+
+### Current Working Implementation:
+
+```yaml
+---
+- name: Install PostgreSQL
+  apt:
+    name:
+      - postgresql
+      - postgresql-contrib
+    state: present
+    update_cache: yes
+
+- name: Start PostgreSQL
+  service:
+    name: postgresql
+    state: started
+    enabled: yes
+
+- name: Create Kong DB user
+  shell: |
+    sudo -u postgres psql -tc "SELECT 1 FROM pg_roles WHERE rolname='{{ kong_pg_user }}'" | grep -q 1 || \
+    sudo -u postgres psql -c "CREATE USER {{ kong_pg_user }} WITH PASSWORD '{{ kong_pg_password }}';"
+  args:
+    executable: /bin/bash
+
+- name: Create Kong database
+  shell: |
+    sudo -u postgres psql -lqt | cut -d \| -f 1 | grep -qw {{ kong_pg_database }} || \
+    sudo -u postgres psql -c "CREATE DATABASE {{ kong_pg_database }} OWNER {{ kong_pg_user }};"
+  args:
+    executable: /bin/bash
+```
+
+### Why shell commands were used:
+
+Initially, `become_user: postgres` with `postgresql_user` and `postgresql_db` modules caused privilege escalation temp-file permission issues:
+
+```bash
+Failed to set permissions on the temporary files Ansible needs to create when becoming an unprivileged user
+```
+
+Using `sudo -u postgres` shell commands resolved the issue and kept the setup idempotent.
 
 ---
 
@@ -438,11 +490,55 @@ chmod 600 ~/.ssh/kong-key.pem
 
 ## ❌ Issue 4: Ansible can’t find SSH config
 
+### Error:
+
+```bash
+Can't open user config file ~/.ssh/config
+```
+
 ✔ Fix:
 
 ```bash
 mkdir -p ~/.ssh
+touch ~/.ssh/config
 ```
+
+✔ Updated ansible.cfg:
+
+```ini
+[ssh_connection]
+ssh_args = -F /home/rehan/.ssh/config
+```
+
+---
+
+## ❌ Issue 5: PostgreSQL become_user permission issue
+
+### Error:
+
+```bash
+Failed to set permissions on the temporary files Ansible needs to create when becoming an unprivileged user
+```
+
+### Cause:
+
+Using:
+
+```yaml
+become_user: postgres
+```
+
+with PostgreSQL Ansible modules caused privilege escalation issues.
+
+✔ Fix:
+
+Replaced PostgreSQL modules with:
+
+```bash
+sudo -u postgres psql ...
+```
+
+shell-based commands.
 
 ---
 
