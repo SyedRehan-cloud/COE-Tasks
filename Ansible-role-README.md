@@ -1,236 +1,266 @@
-# Ansible Role – Kong API Gateway (Production Deployment Guide)
+# Ansible Role – Kong API Gateway (Production-Ready End-to-End Guide)
 
 <p align="center">
 <img width="420" height="260" alt="kong-logo" src="https://github.com/Kong/docs.konghq.com/assets/kong-logo.png" />
 </p>
+
+
+| Field           | Value                  |
+| --------------- | ---------------------- |
+| Author          | Rehan                  |
+| Technology      | Ansible + Kong Gateway |
+| Deployment Type | AWS EC2                |
+| Supported Modes | DBLess + PostgreSQL    |
+| Kong Version    | 3.9.0                  |
+| Last Updated    | 19-05-2026             |
 
 
 # 1. WHAT IS THIS PROJECT?
 
-This project automates the full installation and configuration of:
+This project automates the deployment and configuration of:
 
-**Kong API Gateway (Community Edition)**
-On **AWS EC2 Linux instance**
-Using **Ansible Automation**
+#  Kong API Gateway (Community Edition)
 
-## What Kong does in this setup
+using:
 
-Kong acts as:
-
-* API Gateway
-* Reverse Proxy
-* Authentication Layer
-* Traffic Router
-* Plugin Engine
-
-## Why this automation is required
-
-Without Ansible:
-
-* Manual installation is error-prone
-* PostgreSQL + Kong sync issues occur
-* Migration failures are common
-* Systemd setup differs per machine
-* Hard to reproduce environment
-
-With Ansible:
-
-✔ Same setup everywhere
-✔ Fully repeatable
-✔ Zero manual errors
-✔ Production-ready deployment
-
-
-# 2. ARCHITECTURE FLOW
-
-```id="kongarch"
-Local Machine (Ansible Controller)
-        ↓
-AWS Bastion Host
-        ↓
-Private EC2 (Kong Server)
-        ↓
-PostgreSQL Database (Local)
-        ↓
-Kong API Gateway (8000 / 8001)
-```
-
-# 3. FULL PROJECT STRUCTURE
-
-This is your **real project layout on your machine**:
-
-```id="projstruct"
-~/ansible-kong-project/
-│
-├── ansible.cfg                          # Global Ansible config
-├── inventories/
-│   └── prod/
-│       └── aws_ec2.yml                 # AWS dynamic inventory
-│
-├── playbooks/
-│   └── site.yml                        # MAIN entry playbook
-│
-└── roles/
-    └── kong-standalone/
-        │
-        ├── defaults/
-        │   └── main.yml               # Default variables
-        │
-        ├── vars/
-        │   └── main.yml               # Environment variables
-        │
-        ├── tasks/
-        │   ├── main.yml               # Task orchestrator
-        │   ├── install.yml           # Kong installation
-        │   ├── postgres.yml          # PostgreSQL setup
-        │   ├── config.yml            # Config deployment
-        │   └── service.yml           # Migration + service
-        │
-        ├── templates/
-        │   ├── kong.conf.j2          # Kong config template
-        │   ├── kong.service.j2       # systemd service file
-        │   └── kong.yml.j2           # DB-less config (optional)
-        │
-        ├── handlers/
-        │   └── main.yml              # Restart handlers
-        │
-        └── meta/
-```
-
-Below is your **fully upgraded, production-ready, self-explanatory documentation** with:
-
-✔ Why this project exists
-✔ What problem it solves
-✔ Full architecture + flow
-✔ Exact file paths + purpose
-✔ FULL FILE CONTENTS (ready to paste)
-✔ Troubleshooting table (you asked for missing part)
-✔ Real runtime explanation (based on your execution logs)
-✔ Browser access explanation (your issue)
+* Ansible Automation
+* AWS EC2 Infrastructure
+* CI/CD Pipeline (Semaphore)
+* systemd Service Management
 
 ---
 
-# 🚀 **Ansible Role – Kong API Gateway (Production-Ready End-to-End Guide)**
-
-<p align="center">
-<img width="420" height="260" alt="kong-logo" src="https://github.com/Kong/docs.konghq.com/assets/kong-logo.png" />
-</p>
-
----
-
-| Field        | Value      |
-| ------------ | ---------- |
-| Author       | Rehan      |
-| Created      | 13-05-2026 |
-| Version      | 3.1        |
-| Last Updated | 14-05-2026 |
-
----
-
-# 🧭 1. What is this project?
-
-This project automates the installation and configuration of **Kong API Gateway (Community Edition)** using **Ansible** on AWS EC2 infrastructure.
-
-It ensures:
-
-* Fully automated Kong setup
-* PostgreSQL database provisioning
-* Safe migration handling
-* Systemd-based service management
-* Repeatable deployments (idempotent)
-* Production-ready structure
-
----
-
-# ❓ 2. Why is this project required?
+# 2. WHAT THIS AUTOMATION SOLVES
 
 Without automation:
 
-* Manual Kong setup is error-prone
-* PostgreSQL migration failures occur frequently
-* Config mismatch across environments
-* Service restart breaks clusters
-* No repeatability in CI/CD pipelines
-
-With this project:
-
-✔ One command deploy
-✔ Safe DB migration logic
-✔ Consistent environments
-✔ No manual intervention
-✔ Cloud-ready architecture
+| Problem                           | Impact                  |
+| --------------------------------- | ----------------------- |
+| Manual Kong installation          | Configuration mismatch  |
+| PostgreSQL startup race condition | Kong boot failure       |
+| Manual migrations                 | Human errors            |
+| Service configuration differences | Environment instability |
+| Repeated setup work               | Slow deployments        |
 
 ---
 
-# 🏗️ 3. Architecture Overview
+With this automation:
 
-```
-Ansible Controller (your laptop / WSL)
-        │
-        ▼
-AWS EC2 (Kong Instance - Private)
-        │
-        ├── PostgreSQL (local)
-        ├── Kong Gateway (Nginx worker)
-        └── Admin API (127.0.0.1:8001)
-        │
-        ▼
-External Access via:
-http://<EC2-PUBLIC-IP>:8000
-```
+One-command deployment
+Fully repeatable infrastructure
+Production-safe service management
+DBLess + PostgreSQL mode support
+CI/CD friendly
+Environment-consistent setup
 
----
+# 3. SUPPORTED DEPLOYMENT MODES
 
-# ⚠️ IMPORTANT (YOUR ISSUE EXPLAINED)
+This role supports TWO architectures.
 
-You tried:
+# MODE 1 → DBLESS MODE (CURRENT ACTIVE MODE)
 
-```
-http://127.0.0.1:8001   ❌ (only works inside EC2)
-http://127.0.0.1:8000   ❌ (no route configured)
-http://172.31.x.x:8000  ❌ (private IP only inside VPC)
+```yaml
+kong_mode: "dbless"
 ```
 
-### ✔ Correct browser access:
+## What happens internally?
 
-You MUST use:
+Kong does NOT use PostgreSQL.
 
+Instead:
+
+* Kong reads all routes/services/plugins from:
+
+```bash
+/etc/kong/kong.yml
 ```
-http://<EC2-PUBLIC-IP>:8000
-```
 
-AND ensure:
+## Architecture
 
-✔ AWS Security Group allows port 8000
-✔ Nginx (Kong proxy) is listening on 0.0.0.0
-
----
-
-# 📁 4. PROJECT DIRECTORY STRUCTURE (FULL EXPLANATION)
-
-```
-~/ansible-kong-project/
+```text
+Client
+   ↓
+Kong Gateway
+   ↓
+Backend Services
 ```
 
 ---
 
-## 📌 ROOT FILES
+## Advantages
+
+Simpler setup
+Faster deployments
+No migrations required
+Lower infrastructure cost
+Easier CI/CD
 
 ---
 
-### 📄 ansible.cfg
+## Limitations
 
-📍 Path:
+No Kong Manager
+No runtime API persistence
+Changes require config redeploy
 
+---
+
+# MODE 2 → POSTGRES MODE
+
+```yaml
+kong_mode: "postgres"
 ```
-/ansible-kong-project/ansible.cfg
+
+---
+
+## What happens internally?
+
+Kong stores all configuration in PostgreSQL.
+
+Kong will:
+
+* Install PostgreSQL
+* Create DB + user
+* Run migrations
+* Persist routes/plugins/services in DB
+
+---
+
+## Architecture
+
+```text
+Client
+   ↓
+Kong Gateway
+   ↓
+PostgreSQL
+   ↓
+Backend Services
 ```
 
-### Purpose:
+---
 
-Controls Ansible behavior globally.
+## Advantages
+HA ready
+Dynamic Admin API changes
+Persistent configuration
+Enterprise-ready architecture
 
-### Content:
+---
+
+## Limitations
+
+ More complex
+ DB maintenance required
+ Migrations required
+
+---
+
+# 4. HOW TO SWITCH BETWEEN DBLESS AND POSTGRES
+
+File:
+
+```bash
+roles/kong-api-gateway/defaults/main.yml
+```
+
+---
+
+## Enable DBLess
+
+```yaml
+kong_mode: "dbless"
+```
+
+---
+
+## Enable PostgreSQL
+
+```yaml
+kong_mode: "postgres"
+```
+
+---
+
+# IMPORTANT INTERNAL BEHAVIOR
+
+| Feature               | DBLess     | PostgreSQL |
+| --------------------- | ---------- | ---------- |
+| PostgreSQL install    |  skipped  |  executed |
+| Migrations            |  skipped  |  executed |
+| kong.yml used         |  yes      |  no       |
+| kong.conf DB settings |  disabled |  enabled  |
+
+---
+
+# 5. FULL PROJECT STRUCTURE
+
+```text
+kong-setup/
+│
+├── ansible.cfg
+│
+├── defaults/
+│   └── main.yml
+│
+├── handlers/
+│   └── main.yml
+│
+├── meta/
+│   └── main.yml
+│
+├── tasks/
+│   ├── main.yml
+│   ├── install.yml
+│   ├── postgres.yml
+│   ├── config.yml
+│   ├── service.yml
+│   └── verify.yml
+│
+├── templates/
+│   ├── kong.conf.j2
+│   ├── kong.service.j2
+│   └── kong.yml.j2
+│
+└── vars/
+    └── main.yml
+```
+
+---
+
+# 6. FILE-BY-FILE EXPLANATION
+
+---
+
+# ansible.cfg
+
+Path:
+
+```bash
+kong-setup/ansible.cfg
+```
+
+---
+
+## Purpose
+
+Controls global Ansible behavior.
+
+---
+
+## Backend Functionality
+
+Defines:
+
+* inventory source
+* SSH user
+* SSH key
+* role lookup path
+* inventory plugins
+
+---
+
+## FINAL VERSION
 
 ```ini
 [defaults]
@@ -238,7 +268,10 @@ inventory = inventories/prod/aws_ec2.yml
 roles_path = ./roles
 host_key_checking = False
 remote_user = ubuntu
-private_key_file = /home/rehan/.ssh/kong-key.pem
+private_key_file = /home/ubuntu/.ssh/kong-key.pem
+
+stdout_callback = yaml
+bin_ansible_callbacks = True
 
 [inventory]
 enable_plugins = amazon.aws.aws_ec2
@@ -246,207 +279,279 @@ enable_plugins = amazon.aws.aws_ec2
 
 ---
 
-# ☁️ INVENTORY LAYER
+# defaults/main.yml
+
+Path:
+
+```bash
+defaults/main.yml
+```
 
 ---
 
-## 📄 inventories/prod/aws_ec2.yml
+# Purpose
 
-📍 Path:
+Stores all configurable default variables.
 
-```
-/inventories/prod/aws_ec2.yml
-```
+---
 
-### Purpose:
+# Backend Functionality
 
-Automatically fetch EC2 instances from AWS.
+Controls:
 
-### Content:
+* Kong version
+* deployment mode
+* DB configuration
+* listening ports
+* backend routing
+
+---
+
+# FINAL VERSION
 
 ```yaml
-plugin: amazon.aws.aws_ec2
-
-regions:
-  - us-east-2
-
-filters:
-  instance-state-name: running
-  tag:Environment: Prod
-
-hostnames:
-  - private-ip-address
-
-keyed_groups:
-  - key: tags.Role
-    prefix: role
-```
-
 ---
-
-# 🚀 PLAYBOOK LAYER
-
----
-
-## 📄 playbooks/site.yml (MAIN ENTRY)
-
-📍 Path:
-
-```
-/playbooks/site.yml
-```
-
-### Purpose:
-
-This is the execution entry point.
-
-### What it does:
-
-* Calls the role
-* Runs tasks in order
-* Ensures proper orchestration
-
-### Content:
-
-```yaml
-- name: Deploy Kong API Gateway
-  hosts: role_kong
-  become: yes
-  serial: 1
-
-  roles:
-    - kong-standalone
-```
-
----
-
-# 🧩 ROLE: kong-standalone
-
-📍 Path:
-
-```
-/roles/kong-standalone/
-```
-
----
-
-# ⚙️ 1. defaults/main.yml
-
-📍 Path:
-
-```
-roles/kong-standalone/defaults/main.yml
-```
-
-### Purpose:
-
-Default safe variables.
-
-### Content:
-
-```yaml
 kong_version: "3.9.0"
-kong_mode: "postgres"
 
+# deployment mode
+# values:
+# - dbless
+# - postgres
+kong_mode: "dbless"
+
+kong_admin_listen: "127.0.0.1:8001"
+kong_proxy_listen: "0.0.0.0:8000"
+
+# postgres variables
 kong_pg_host: "127.0.0.1"
 kong_pg_port: 5432
-kong_pg_user: "kong"
-kong_pg_password: "kong123"
 kong_pg_database: "kong"
+kong_pg_user: "kong"
+kong_pg_password: "kong"
+
+# backend service
+backend_host: "127.0.0.1"
 ```
 
 ---
 
-# ⚙️ 2. vars/main.yml
+# vars/main.yml
 
-📍 Path:
+Path:
 
+```bash
+vars/main.yml
 ```
-roles/kong-standalone/vars/main.yml
-```
 
-### Purpose:
+---
 
-Environment-specific overrides (prod values).
+# Purpose
 
-### Content:
+Stores fixed role-level variables.
+
+---
+
+# FINAL VERSION
 
 ```yaml
-kong_env: production
-kong_log_level: notice
+---
+kong_version: "3.9.0"
 ```
 
 ---
 
-# ⚙️ 3. tasks/main.yml (ORCHESTRATOR)
+# meta/main.yml
 
-📍 Path:
+Path:
 
+```bash
+meta/main.yml
 ```
-roles/kong-standalone/tasks/main.yml
+
+
+# Purpose
+
+Makes role compatible with:
+
+* Ansible Galaxy
+* Semaphore role installation
+* CI/CD role validation
+
+
+# Why this was required
+
+Without this file:
+
+```text
+role does not appear to have a meta/main.yml file
 ```
 
-### Purpose:
+Semaphore failed role installation.
+
+---
+
+# FINAL VERSION
+
+```yaml
+---
+galaxy_info:
+  role_name: kong_api_gateway
+  author: Rehan
+  description: Kong API Gateway installation role
+  company: Opstree
+
+  license: MIT
+
+  min_ansible_version: "2.14"
+
+  platforms:
+    - name: Ubuntu
+      versions:
+        - focal
+        - jammy
+        - noble
+
+dependencies: []
+```
+
+
+# tasks/main.yml
+
+Path:
+
+```bash
+tasks/main.yml
+```
+
+---
+
+# Purpose
+
+Main orchestrator.
 
 Controls execution order.
 
-### Content:
+---
 
-```yaml
-- import_tasks: install.yml
-- import_tasks: postgres.yml
-  when: kong_mode == "postgres"
-- import_tasks: config.yml
-- import_tasks: service.yml
+# Backend Execution Flow
+
+```text
+install.yml
+   ↓
+postgres.yml (ONLY if postgres mode)
+   ↓
+config.yml
+   ↓
+service.yml
+   ↓
+verify.yml
 ```
 
 ---
 
-# 📦 4. install.yml
-
-📍 Path:
-
-```
-roles/kong-standalone/tasks/install.yml
-```
-
-### Purpose:
-
-Installs Kong.
-
-### Content:
+# FINAL VERSION
 
 ```yaml
+---
+- import_tasks: install.yml
+
+- import_tasks: postgres.yml
+  when: kong_mode == "postgres"
+
+- import_tasks: config.yml
+
+- import_tasks: service.yml
+
+- import_tasks: verify.yml
+```
+
+---
+
+# tasks/install.yml
+
+Path:
+
+```bash
+tasks/install.yml
+```
+
+---
+
+# Purpose
+
+Downloads and installs Kong package.
+
+---
+
+# Backend Functionality
+
+* Downloads Kong `.deb`
+* Installs package
+* Prevents auto-upgrade
+
+---
+
+# FINAL VERSION
+
+```yaml
+---
 - name: Download Kong package
   get_url:
     url: "https://packages.konghq.com/public/gateway-39/deb/ubuntu/pool/noble/main/k/ko/kong_{{ kong_version }}/kong_{{ kong_version }}_amd64.deb"
     dest: /tmp/kong.deb
+    mode: '0644'
+    force: yes
 
-- name: Install Kong
+- name: Install Kong package
   apt:
     deb: /tmp/kong.deb
+    state: present
 
-- name: Hold version
-  command: apt-mark hold kong
+- name: Hold Kong package version
+  dpkg_selections:
+    name: kong
+    selection: hold
 ```
 
 ---
 
-# 🐘 5. postgres.yml
+# tasks/postgres.yml
 
-📍 Path:
+Path:
 
+```bash
+tasks/postgres.yml
 ```
-roles/kong-standalone/tasks/postgres.yml
-```
 
-### Purpose:
 
-Database setup for Kong.
+# Purpose
 
-### Content:
+Handles PostgreSQL installation and DB provisioning.
+
+
+# IMPORTANT
+
+This file executes ONLY when:
 
 ```yaml
+kong_mode: "postgres"
+```
+
+
+# Backend Functionality
+
+* installs PostgreSQL
+* waits for DB readiness
+* creates DB user
+* creates Kong database
+* ensures stable DB connectivity
+
+---
+
+# FINAL VERSION
+
+```yaml
+---
 - name: Install PostgreSQL
   apt:
     name:
@@ -455,53 +560,127 @@ Database setup for Kong.
     state: present
     update_cache: yes
 
-- name: Start PostgreSQL
-  service:
-    name: postgresql
+- name: Find PostgreSQL service name
+  shell: systemctl list-units --type=service | grep postgres | awk '{print $1}' | head -n1
+  register: postgres_service
+  changed_when: false
+
+- name: Start PostgreSQL service
+  systemd:
+    name: "{{ postgres_service.stdout }}"
     state: started
     enabled: yes
+  when: postgres_service.stdout != ""
 
-- name: Wait for DB readiness
+- name: Wait for PostgreSQL TCP port
+  wait_for:
+    host: 127.0.0.1
+    port: 5432
+    timeout: 120
+
+- name: Wait for PostgreSQL fully ready
   shell: pg_isready -h 127.0.0.1 -p 5432
-  register: pg
-  retries: 15
+  register: pg_ready
+  retries: 30
   delay: 3
-  until: pg.rc == 0
+  until: pg_ready.rc == 0
   changed_when: false
+
+- name: Find PostgreSQL config
+  find:
+    paths: /etc/postgresql
+    patterns: postgresql.conf
+    recurse: yes
+  register: pg_conf
+
+- name: Ensure PostgreSQL listens on IPv4 only
+  lineinfile:
+    path: "{{ pg_conf.files[0].path }}"
+    regexp: '^#?listen_addresses'
+    line: "listen_addresses = '127.0.0.1'"
+  notify: restart postgresql
+  when: pg_conf.matched > 0
+
+- name: Create Kong DB user
+  shell: |
+    sudo -u postgres psql -tc "SELECT 1 FROM pg_roles WHERE rolname='{{ kong_pg_user }}'" | grep -q 1 || \
+    sudo -u postgres psql -c "CREATE USER {{ kong_pg_user }} WITH PASSWORD '{{ kong_pg_password }}';"
+  args:
+    executable: /bin/bash
+
+- name: Create Kong database
+  shell: |
+    sudo -u postgres psql -lqt | cut -d \| -f 1 | grep -qw {{ kong_pg_database }} || \
+    sudo -u postgres psql -c "CREATE DATABASE {{ kong_pg_database }} OWNER {{ kong_pg_user }};"
+  args:
+    executable: /bin/bash
+```
+
+# tasks/config.yml
+
+Path:
+
+```bash
+tasks/config.yml
 ```
 
 ---
 
-# ⚙️ 6. config.yml
+# Purpose
 
-📍 Path:
+Deploys:
 
+* Kong configs
+* DBLess config
+* systemd service
+
+---
+
+# Backend Functionality
+
+Creates:
+
+```text
+/etc/kong/kong.conf
+/etc/kong/kong.yml
+/etc/systemd/system/kong.service
 ```
-roles/kong-standalone/tasks/config.yml
-```
 
-### Purpose:
+---
 
-Deploy configs + systemd service.
-
-### Content:
+# FINAL VERSION
 
 ```yaml
-- name: Create config directory
+---
+- name: Create Kong config directory
   file:
     path: /etc/kong
     state: directory
+    mode: '0755'
 
 - name: Deploy kong.conf
   template:
     src: kong.conf.j2
     dest: /etc/kong/kong.conf
+    mode: '0644'
   notify: restart kong
+
+- name: Deploy kong.yml (dbless mode only)
+  template:
+    src: kong.yml.j2
+    dest: /etc/kong/kong.yml
+    mode: '0644'
+  when: kong_mode == "dbless"
+  notify: reload kong
 
 - name: Deploy systemd service
   template:
     src: kong.service.j2
     dest: /etc/systemd/system/kong.service
+    mode: '0644'
+  notify:
+    - reload systemd
+    - restart kong
 
 - name: Reload systemd
   systemd:
@@ -510,385 +689,402 @@ Deploy configs + systemd service.
 
 ---
 
-# 🚀 7. service.yml (MIGRATION + START)
+# tasks/service.yml
 
-📍 Path:
+Path:
 
+```bash
+tasks/service.yml
 ```
-roles/kong-standalone/tasks/service.yml
-```
 
-### Purpose:
+---
 
-Handles safe migrations + start
+# Purpose
 
-### Content:
+Handles:
+
+* config validation
+* migrations
+* Kong startup
+
+---
+
+# Backend Functionality
+
+## DBLess mode
+
+* validates declarative config
+* starts Kong directly
+
+---
+
+## PostgreSQL mode
+
+* validates DB connectivity
+* runs migrations
+* starts Kong
+
+---
+
+# FINAL VERSION
 
 ```yaml
-- name: Stop Kong
+---
+- name: Validate Kong config
+  command: kong check /etc/kong/kong.conf
+  changed_when: false
+  when: kong_mode == "postgres"
+
+- name: Validate Kong config (dbless mode)
+  command: kong check /etc/kong/kong.conf
+  changed_when: false
+  when: kong_mode == "dbless"
+
+- name: Stop Kong safely
   systemd:
     name: kong
     state: stopped
   ignore_errors: yes
 
+- name: Wait for PostgreSQL stable connection
+  shell: |
+    PGPASSWORD={{ kong_pg_password }} psql \
+    -h 127.0.0.1 \
+    -U {{ kong_pg_user }} \
+    -d postgres \
+    -c "SELECT 1;"
+  register: db_ping
+  retries: 20
+  delay: 3
+  until: db_ping.rc == 0
+  changed_when: false
+  when: kong_mode == "postgres"
+
+- name: Check Kong schema existence
+  shell: sudo -u postgres psql -d {{ kong_pg_database }} -c "\dt"
+  register: schema_check
+  failed_when: false
+  changed_when: false
+  when: kong_mode == "postgres"
+
+- name: Run migrations bootstrap (first time only)
+  command: kong migrations bootstrap -c /etc/kong/kong.conf
+  when:
+    - kong_mode == "postgres"
+    - "'kong' not in schema_check.stdout"
+  register: bootstrap
+  retries: 10
+  delay: 5
+  until: bootstrap.rc == 0
+
 - name: Run migrations up
   command: kong migrations up -c /etc/kong/kong.conf
+  register: mig_up
+  retries: 10
+  delay: 5
+  until: mig_up.rc == 0
+  when: kong_mode == "postgres"
 
 - name: Run migrations finish
   command: kong migrations finish -c /etc/kong/kong.conf
+  when: kong_mode == "postgres"
 
 - name: Start Kong
   systemd:
     name: kong
     state: started
     enabled: yes
-
-- name: Verify Admin API
-  uri:
-    url: http://127.0.0.1:8001
-    status_code: 200
 ```
 
 ---
 
-# 🔔 8. handlers/main.yml
+# tasks/verify.yml
 
-📍 Path:
+Path:
 
+```bash
+tasks/verify.yml
 ```
-roles/kong-standalone/handlers/main.yml
+
+---
+
+# Purpose
+
+Verifies Kong health after deployment.
+
+---
+
+# Backend Functionality
+
+Checks:
+
+```text
+http://127.0.0.1:8001
 ```
 
-### Purpose:
+If healthy:
 
-Restart Kong when config changes.
+```text
+HTTP 200
+```
 
-### Content:
+---
+
+# FINAL VERSION
 
 ```yaml
+---
+- name: Wait for Kong Admin API to be ready
+  uri:
+    url: http://127.0.0.1:8001
+    method: GET
+    status_code: 200
+    timeout: 5
+  register: kong_api
+  retries: 30
+  delay: 5
+  until: kong_api.status == 200
+
+- name: Confirm Kong Admin API is responding
+  debug:
+    msg: "Kong Admin API is up and running"
+```
+
+---
+
+# handlers/main.yml
+
+Path:
+
+```bash
+handlers/main.yml
+```
+
+---
+
+# Purpose
+
+Handles service reload/restart events.
+
+---
+
+# Backend Functionality
+
+Uses:
+
+```text
+systemd
+```
+
+instead of raw Kong commands.
+
+---
+
+# FINAL VERSION
+
+```yaml
+---
 - name: restart kong
   systemd:
     name: kong
     state: restarted
+    daemon_reload: yes
+  listen: restart kong
+
+- name: reload kong
+  systemd:
+    name: kong
+    state: reloaded
+  listen: reload kong
+
+- name: reload systemd
+  systemd:
+    daemon_reload: yes
 ```
 
 ---
 
-# 🧠 9. EXECUTION FLOW (REAL FLOW FROM YOUR RUN)
+# templates/kong.conf.j2
 
-```
-1. Ansible connects to EC2
-2. Installs Kong package
-3. Installs PostgreSQL
-4. Waits for DB ready
-5. Creates DB + user
-6. Deploys kong.conf
-7. Stops Kong safely
-8. Runs migrations
-9. Starts Kong
-10. Confirms Admin API
+Path:
+
+```bash
+templates/kong.conf.j2
 ```
 
 ---
 
-# 🌐 10. HOW TO ACCESS IN BROWSER (IMPORTANT)
+# Purpose
 
-## ❌ WRONG (your case)
+Main Kong configuration file.
 
-```
-http://127.0.0.1:8000   → only local machine
-http://172.31.x.x:8000  → private VPC only
-```
+---
 
-## ✅ CORRECT
-
-### Step 1:
-
-Get public IP:
-
-```
-curl ifconfig.me
-```
-
-### Step 2:
-
-Open browser:
-
-```
-http://<EC2-PUBLIC-IP>:8000
-```
-
-### Step 3 (AWS FIX):
-
-Security Group must allow:
-
-```
-Inbound:
-TCP 8000 → 0.0.0.0/0
-TCP 8001 → your IP only (recommended)
-```
-
-# 4. WHAT EACH COMPONENT DOES
-
-## A. ansible.cfg
+# Backend Functionality
 
 Controls:
 
-* Inventory source
-* SSH config
-* Role paths
-* Remote user (ubuntu)
-
-Path:
-
-```bash
-~/ansible-kong-project/ansible.cfg
-```
-
-## B. inventory/aws_ec2.yml
-
-Automatically discovers EC2 instances.
-
-Path:
-
-```bash
-~/ansible-kong-project/inventories/prod/aws_ec2.yml
-```
-
-✔ Finds running EC2
-✔ Groups by tag (role_kong)
-
-
-## C. PLAYBOOK (site.yml)
-
-Path:
-
-```bash
-~/ansible-kong-project/playbooks/site.yml
-```
-
-### What it does:
-
-This is the **ENTRY POINT of your deployment**
-
-```yaml
-- name: Deploy Kong API Gateway
-  hosts: role_kong
-  become: yes
-  roles:
-    - kong-standalone
-```
-
-### In simple words:
-
-“Run Kong role on all EC2 machines tagged as Kong”
+* database mode
+* ports
+* listeners
+* DB connectivity
 
 ---
 
-# 5. WHAT YOUR ANSIBLE ROLE IS DOING
+# FINAL VERSION
 
- Path:
-
-```bash
-~/ansible-kong-project/roles/kong-standalone/
-```
-
----
-
-## Role = FULL AUTOMATION ENGINE
-
-It performs:
-
-### 1. Install Kong
-
-* downloads `.deb`
-* installs package
-* locks version
-
----
-
-### 2. Install PostgreSQL
-
-* installs DB
-* starts service
-* ensures DB is ready
-
-
-### 3. Create DB + User
-
-* creates `kong` user
-* creates `kong` database
-
-
-### 4. Configure Kong
-
-* writes `kong.conf`
-* sets proxy + admin ports
-
-
-### 5. Run migrations
-
-* ensures DB schema exists
-* runs:
-
-  * migrations up
-  * migrations finish
-
----
-
-### 6. Start service
-
-* systemd starts Kong
-* ensures auto restart
-
----
-
-### 7. Verify API
-
-* checks Admin API health
-
----
-
-# 6. FULL EXECUTION FLOW (REAL RUNTIME)
-
-When you run:
-
-```bash
-ansible-playbook playbooks/site.yml
-```
-
-### Flow:
-
-```id="flow1"
-1. Ansible connects to EC2 via SSH
-2. Inventory loads EC2 instances
-3. Kong package installed
-4. PostgreSQL installed
-5. DB becomes ready (pg_isready)
-6. DB user + database created
-7. kong.conf deployed
-8. systemd service created
-9. Kong stopped safely
-10. migrations up executed
-11. migrations finish executed
-12. Kong started
-13. Admin API tested (127.0.0.1:8001)
-```
-
-
-# 7. WHY BROWSER ACCESS WAS FAILING
-
-## Wrong assumption:
-
-```bash
-http://127.0.0.1:8000
-```
-
-👉 Only works inside EC2
-
----
-
-## Wrong:
-
-```bash
-http://172.31.24.6:8000
-```
-
-👉 Private IP (not accessible from laptop)
-
-
-## Correct:
-
-```bash
-http://<EC2_PUBLIC_IP>:8000
-```
-
-
-## Required AWS Security Group
-
-| Port | Purpose                               |
-| ---- | ------------------------------------- |
-| 8000 | Proxy                                 |
-| 8001 | Admin API (internal only recommended) |
-
----
-
-# 8. TROUBLESHOOTING TABLE (IMPORTANT)
-
-| Problem                          | Cause                  | Fix                    |
-| -------------------------------- | ---------------------- | ---------------------- |
-| Kong not reachable in browser    | Using private IP       | Use Public IP          |
-| 404 on /status                   | No route configured    | Create service + route |
-| migration failure                | bootstrap used         | Use up + finish        |
-| PostgreSQL race condition        | DB not ready           | pg_isready retry       |
-| Kong service restart fails       | wrong systemd args     | fix ExecStart          |
-| admin API not working externally | security group blocked | open 8001              |
-
----
-
-# 9. IMPORTANT CONFIG FILES (FINAL VIEW)
-
----
-
-## kong.conf
-
- `/etc/kong/kong.conf`
-
-```ini
+```jinja
+{% if kong_mode == "postgres" %}
 database = postgres
-pg_host = 127.0.0.1
-pg_user = kong
-pg_password = kong123
-pg_database = kong
 
-proxy_listen = 0.0.0.0:8000
-admin_listen = 0.0.0.0:8001
+pg_host = {{ kong_pg_host }}
+pg_port = {{ kong_pg_port }}
+pg_user = {{ kong_pg_user }}
+pg_password = {{ kong_pg_password }}
+pg_database = {{ kong_pg_database }}
+
+{% else %}
+database = off
+declarative_config = /etc/kong/kong.yml
+{% endif %}
+
+admin_listen = {{ kong_admin_listen }}
+proxy_listen = {{ kong_proxy_listen }}
 ```
 
-## systemd service
+---
 
-`/etc/systemd/system/kong.service`
+# templates/kong.service.j2
+
+Path:
+
+```bash
+templates/kong.service.j2
+```
+
+---
+
+# Purpose
+
+Creates systemd-managed Kong service.
+
+---
+
+# IMPORTANT FIX
+
+This template was fixed to support:
+
+✅ DBLess mode
+✅ PostgreSQL mode
+
+without hardcoding PostgreSQL dependency.
+
+---
+
+# FINAL VERSION
 
 ```ini
 [Unit]
 Description=Kong API Gateway
-After=network.target postgresql.service
+After=network.target
+
+{% if kong_mode == "postgres" %}
+After=postgresql.service
+{% endif %}
 
 [Service]
 Type=forking
-User=kong
 ExecStart=/usr/local/bin/kong start -c /etc/kong/kong.conf
 ExecStop=/usr/local/bin/kong stop -c /etc/kong/kong.conf
+ExecReload=/usr/local/bin/kong reload -c /etc/kong/kong.conf
 Restart=on-failure
+LimitNOFILE=4096
 
 [Install]
 WantedBy=multi-user.target
 ```
 
-# 10. SECURITY DESIGN
+---
 
-✔ Bastion host access only
-✔ Private EC2 for Kong
-✔ DB not exposed externally
-✔ Admin API should be restricted
-✔ SSH key-based login only
+# templates/kong.yml.j2
 
-# 11. FINAL RESULT (WHAT YOU ACHIEVED)
+Path:
 
-Your automation now provides:
+```bash
+templates/kong.yml.j2
+```
 
-✔ Fully automated Kong deployment
-✔ Production-safe migrations
-✔ Repeatable infrastructure setup
-✔ AWS-based scalable architecture
-✔ Systemd-managed service lifecycle
-✔ Stable API Gateway deployment
+---
 
-# 12. FINAL SUMMARY
+# Purpose
 
-👉 This project takes a fresh EC2 machine
-👉 Installs Kong + PostgreSQL automatically
-👉 Configures everything correctly
-👉 Runs migrations safely
-👉 Starts Kong as a service
-👉 Makes it accessible via API Gateway ports
+DBLess declarative configuration.
+
+---
+
+# Backend Functionality
+
+Defines:
+
+* services
+* routes
+* plugins
+
+WITHOUT PostgreSQL.
+
+---
+
+# FINAL VERSION
+
+```yaml
+_format_version: "3.0"
+_transform: true
+
+services:
+  - name: user-service
+    url: http://{{ backend_host }}:5678
+
+    plugins:
+      - name: rate-limiting
+        config:
+          minute: 5
+          policy: local
+
+    routes:
+      - name: user-route
+        paths:
+          - /users
+        strip_path: true
+```
+
+---
+
+# 7. REAL EXECUTION FLOW
+
+```text
+1. Semaphore triggers playbook
+2. Role gets installed
+3. install.yml executes
+4. postgres.yml skipped (dbless mode)
+5. config.yml deploys configs
+6. systemd service created
+7. service.yml validates config
+8. Kong service starts
+9. verify.yml checks Admin API
+10. handlers restart/reload services
+```
+
+---
+
+# 8. FINAL RESULT
+
+Your deployment now provides:
+
+✅ Production-ready Kong deployment
+✅ DBLess + PostgreSQL support
+✅ CI/CD-safe architecture
+✅ Semaphore-compatible role structure
+✅ Dynamic service management
+✅ Stable startup sequence
+✅ Health verification
+✅ Reusable Ansible automation
