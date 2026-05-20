@@ -1,16 +1,3 @@
-Got it — you don’t just want “files”, you want a **complete mental model of your Kong platform**:
-
-* what each Ansible file does
-* how Kong + PostgreSQL + Prometheus + Grafana + plugins work together
-* architecture diagram (Mermaid)
-* what you achieve after `ansible-playbook`
-* full directory explanation
-* plugin explanation (KeyAuth, JWT, Prometheus, RateLimit)
-
-I’ll structure this like a **real production design document**.
-
----
-
 # 🧠 1. FINAL SYSTEM YOU BUILT (HIGH LEVEL)
 
 After your playbook runs successfully, you now have:
@@ -616,21 +603,3 @@ Client → Kong → Backend
              ↓
         Grafana (UI)
 ```
-
----
-
-# If you want next upgrade (recommended)
-
-I can help you build:
-
-### 🚀 1. True HA Kong cluster (multi-node + load balancer)
-
-### 🚀 2. DR with standby PostgreSQL
-
-### 🚀 3. Terraform + Ansible hybrid infra
-
-### 🚀 4. Kong Manager UI integration
-
-### 🚀 5. AWS ALB + Auto Scaling Group setup
-
-Just tell me 👍
