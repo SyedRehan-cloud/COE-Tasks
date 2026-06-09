@@ -7,7 +7,7 @@
 
 In today's distributed microservices environment, **operational complexity scales exponentially** with every new service. Kong Gateway eliminates this burden by providing a **single, programmable control point** for all API traffic—enabling your team to focus on business logic while Kong handles security, traffic control, and observability.
 
-** ROI at Scale:**
+**ROI at Scale**
 - ⚡ **New API exposure:** 2-3 days → **minutes**
 - 🔒 **Security updates:** Multiple services → **single plugin update**  
 - 📊 **Incident response:** Service-by-service debugging → **gateway-level traces**
@@ -451,7 +451,3 @@ Ready to transform your microservices architecture with Kong Gateway?
 **📱 Phone:** [Your Phone]
 
 ***
-
-**© 2026 | Enterprise API Management Solutions**
-
-*This document is proprietary and intended for client evaluation purposes only.*
