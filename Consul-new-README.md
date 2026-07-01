@@ -1,4 +1,4 @@
-# 📘 Consul Cluster POC — Manual Setup (Ubuntu EC2)
+# Consul Cluster POC — Manual Setup (Ubuntu EC2)
 
 ---
 
@@ -183,8 +183,7 @@ This shows timeline of cluster formation:
 
 ---
 
-# 🧠 4. Raft Consensus Flow (VERY IMPORTANT for interviews)
-
+# 🧠 4. Raft Consensus Flow 
 ```mermaid
 flowchart LR
 
@@ -252,7 +251,7 @@ Gossip works like infection spread:
 
 ---
 
-# 🔥 6. Your Troubleshooting Flow (Based on your issue)
+# 🔥 6. Troubleshooting Flow 
 
 ```mermaid
 flowchart TD
@@ -342,7 +341,7 @@ E --- Compare
 
 ---
 
-# 🧠 9. Your Actual PoC Flow (End-to-End)
+# 🧠 9. Actual PoC Flow (End-to-End)
 
 ```mermaid
 flowchart LR
@@ -448,7 +447,7 @@ Follower → Candidate → Leader
 
 ---
 
-## 🧠 4.5 bootstrap_expect
+## 4.5 bootstrap_expect
 
 ```hcl
 bootstrap_expect = 3
@@ -461,7 +460,7 @@ Meaning:
 
 ---
 
-## 🧠 4.6 bind_addr vs advertise_addr
+## 4.6 bind_addr vs advertise_addr
 
 * bind_addr → listen address
 * advertise_addr → reachable address
@@ -498,39 +497,168 @@ retry_join = ["ip1", "ip2"]
 
 # 6. Important Files
 
-## consul.hcl
+---
 
-(UNCHANGED — kept as-is)
+## 6.1 /etc/consul.d/consul.hcl
+
+### Purpose:
+
+Main configuration file for Consul agent
 
 ---
 
-## systemd service
+### Example:
 
-(UNCHANGED — kept as-is)
+```hcl
+datacenter = "dc1"
+node_name = "consul-1"
+server = true
+bootstrap_expect = 3
+
+data_dir = "/var/lib/consul"
+
+bind_addr = "172.31.x.x"
+advertise_addr = "172.31.x.x"
+
+client_addr = "0.0.0.0"
+
+retry_join = [
+  "172.31.39.147",
+  "172.31.47.192"
+]
+
+ui_config {
+  enabled = true
+}
+
+ports {
+  http = 8500
+}
+
+log_level = "INFO"
+```
+
+---
+
+### Meaning of keys:
+
+| Key              | Meaning                    |
+| ---------------- | -------------------------- |
+| datacenter       | Logical cluster grouping   |
+| node_name        | Unique node identifier     |
+| server           | Enables server mode        |
+| bootstrap_expect | Expected number of servers |
+| data_dir         | Stores Raft + state data   |
+| bind_addr        | Internal network binding   |
+| advertise_addr   | Cluster communication IP   |
+| retry_join       | Auto cluster joining       |
+| ui_config        | Enables web UI             |
+| ports.http       | API/UI port                |
+
+---
+
+## 6.2 /etc/systemd/system/consul.service
+
+### Purpose:
+
+Runs Consul as a background service
+
+---
+
+### Content:
+
+```ini
+[Unit]
+Description=Consul Agent
+After=network-online.target
+
+[Service]
+User=consul
+Group=consul
+ExecStart=/usr/local/bin/consul agent -config-dir=/etc/consul.d
+Restart=on-failure
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target
+```
+
+---
+
+### Meaning:
+
+| Section   | Purpose           |
+| --------- | ----------------- |
+| Unit      | Service metadata  |
+| Service   | How to run Consul |
+| ExecStart | Start command     |
+| Restart   | Auto-restart      |
+| Install   | Enable at boot    |
 
 ---
 
 # 7. Ports Used
 
-| Port | Purpose    |
-| ---- | ---------- |
-| 8300 | Raft       |
-| 8301 | Gossip     |
-| 8302 | WAN gossip |
-| 8500 | UI/API     |
-| 8600 | DNS        |
+| Port | Type    | Purpose             |
+| ---- | ------- | ------------------- |
+| 8300 | TCP     | RPC between servers |
+| 8301 | TCP/UDP | Gossip LAN          |
+| 8302 | TCP/UDP | WAN gossip          |
+| 8500 | HTTP    | API + UI            |
+| 8600 | TCP/UDP | DNS interface       |
 
 ---
 
 # 8. Cluster Formation Flow
 
 ```
-Install → Config → systemd → SG → start → gossip → raft → leader
+1. Install Consul binary
+2. Create consul user
+3. Configure consul.hcl
+4. Start service
+5. Gossip starts (8301)
+6. Nodes discover each other
+7. Raft election happens
+8. Leader selected
+9. Cluster becomes ACTIVE
+```
+---
+
+# 9. How Cluster Actually Starts
+
+From logs:
+
+### Step 1: Nodes start
+
+```
+consul-1, consul-2, consul-3 start as followers
+```
+---
+
+### Step 2: Gossip discovery
+
+```
+Nodes find each other via retry_join
+```
+---
+
+### Step 3: Bootstrap trigger
+
+```
+Found expected number of peers: 3
 ```
 
 ---
 
-# 9. Runtime Behavior
+### Step 4: Raft election
+
+```
+New leader elected: consul-2
+```
+
+---
+
+# Runtime Behavior
 
 * Nodes start as followers
 * Gossip connects them
@@ -567,7 +695,7 @@ Consul =
 
 ---
 
-# 🧠 Final Mental Model
+# Final Mental Model
 
 ```
 Leader = brain
@@ -576,19 +704,13 @@ Gossip = communication
 Raft = decision making
 ```
 
-Good — this is exactly the right kind of section to add to make the doc look “real-world production ready” without touching your existing content.
-
-I’m **not changing anything you already wrote**. I’m only adding a new section at the end.
-
----
-
-# 🚀 13. Future Roadmap / Production-Grade Enhancements
+# 13. Future Roadmap / Production-Grade Enhancements
 
 This section outlines the next steps to evolve this **Consul PoC cluster into a production-grade distributed system**.
 
 ---
 
-## 🔐 13.1 TLS Encryption Between Nodes
+## 13.1 TLS Encryption Between Nodes
 
 ### Goal:
 
@@ -614,7 +736,7 @@ Node communication becomes fully encrypted (mTLS)
 
 ---
 
-## 🔑 13.2 ACL (Access Control Lists) Setup
+## 13.2 ACL (Access Control Lists) Setup
 
 ### Goal:
 
@@ -645,10 +767,9 @@ Only authorized services can:
 - read KV store
 - access UI/API
 ```
-
 ---
 
-## 🌐 13.3 Consul UI Access Security
+## 13.3 Consul UI Access Security
 
 ### Goal:
 
@@ -673,7 +794,7 @@ UI becomes enterprise-secure dashboard
 
 ---
 
-## 🧩 13.4 Service Registration (Microservices Example)
+## 13.4 Service Registration (Microservices Example)
 
 ### Goal:
 
@@ -707,7 +828,7 @@ service {
 
 ---
 
-## ❤️ 13.5 Health Checks
+## 13.5 Health Checks
 
 ### Goal:
 
@@ -733,7 +854,7 @@ Monitor service and node health automatically.
 
 ---
 
-## 🔁 13.6 Failover Simulation
+## 13.6 Failover Simulation
 
 ### Goal:
 
@@ -765,7 +886,7 @@ Cluster remains operational with remaining quorum
 
 ---
 
-## 🧠 Final Production Vision
+## Final Production Vision
 
 After these upgrades, the system evolves into:
 
@@ -789,7 +910,7 @@ After these upgrades, the system evolves into:
 
 ---
 
-## 📌 Summary of Enhancements
+## Summary of Enhancements
 
 | Area                 | Upgrade                   |
 | -------------------- | ------------------------- |
@@ -799,5 +920,3 @@ After these upgrades, the system evolves into:
 | Observability        | Health checks             |
 | Reliability          | Failover testing          |
 | Production readiness | Full HA + secure cluster  |
-
----
