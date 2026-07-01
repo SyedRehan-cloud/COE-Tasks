@@ -36,6 +36,243 @@ Consul is used as a:
         │                 │                 │
         └─────────── Cluster Gossip + Raft ───────────┘
 ```
+Good idea—this will make your PoC doc look *production-grade*.
+
+I’ll give you **Mermaid diagrams (ready to paste into Markdown)** for:
+
+1. Consul architecture
+2. Cluster + Raft + Gossip flow
+3. Request/operation flow
+4. Failure scenarios + troubleshooting view
+5. Comparison view (Consul vs etcd vs Zookeeper)
+
+You can directly paste these into:
+
+* GitHub README
+* Confluence
+* Notion (supports Mermaid)
+* Markdown docs
+
+---
+
+# 🧠 1. Consul High-Level Architecture (PoC Setup)
+
+```mermaid
+flowchart TB
+
+Client["Client / CLI (consul members, API calls)"]
+
+subgraph Cluster["Consul Cluster (3 Server Nodes)"]
+    S1["consul-1\n172.31.38.229"]
+    S2["consul-2\n172.31.39.147"]
+    S3["consul-3\n172.31.47.192"]
+end
+
+Client --> S1
+Client --> S2
+Client --> S3
+
+S1 <--> S2
+S2 <--> S3
+S1 <--> S3
+
+S1 --- Raft[(Raft Consensus Layer)]
+S2 --- Raft
+S3 --- Raft
+
+S1 --- Gossip[(Serf Gossip Layer)]
+S2 --- Gossip
+S3 --- Gossip
+```
+
+---
+
+# ⚙️ 2. Consul Internal Layered Architecture
+
+```mermaid
+flowchart TB
+
+Client["API / CLI"]
+
+NGX["Consul HTTP API (8500)"]
+
+Agent["Consul Agent"]
+
+subgraph Core["Core Systems"]
+    Raft["Raft Consensus (Leader Election + Log Replication)"]
+    Serf["Gossip Protocol (Node Discovery + Failure Detection)"]
+    Catalog["Service Catalog"]
+end
+
+Storage["Local Data Dir (/var/lib/consul)"]
+
+Client --> NGX --> Agent
+Agent --> Catalog
+Agent --> Raft
+Agent --> Serf
+Agent --> Storage
+```
+
+---
+
+# 🧠 3. Your 3-Node Cluster Flow 
+
+```mermaid
+sequenceDiagram
+participant N1 as consul-1
+participant N2 as consul-2
+participant N3 as consul-3
+
+Note over N1,N3: Gossip Layer: Node Discovery
+
+N1->>N2: Join Request (retry_join)
+N1->>N3: Join Request (retry_join)
+
+Note over N1,N3: Cluster formed (3 nodes)
+
+N2->>N1: Raft election starts
+N3->>N1: Vote exchange
+N2-->>N2: Becomes LEADER
+
+Note over N1,N3: All writes go via leader
+```
+
+---
+
+# 🧠 4. Raft Consensus Flow (VERY IMPORTANT for interviews)
+
+```mermaid
+flowchart LR
+
+F["Follower Nodes"]
+C["Candidate Node"]
+L["Leader Node"]
+
+F -->|No heartbeat| C
+C -->|Election Timeout| C
+C -->|Request Votes| F
+F -->|Vote Granted| C
+
+C -->|Majority Votes| L
+
+L -->|Log Replication| F
+L -->|Heartbeat| F
+```
+
+---
+
+# 🌐 5. Gossip Protocol (Serf) Flow
+
+```mermaid
+flowchart TB
+
+N1["Node 1"]
+N2["Node 2"]
+N3["Node 3"]
+N4["New Node"]
+
+N4 --> N1
+N4 --> N2
+N4 --> N3
+
+N1 <--> N2
+N2 <--> N3
+N1 <--> N3
+
+Note["Gossip = random peer-to-peer exchange"]
+
+N1 --- Note
+N2 --- Note
+N3 --- Note
+```
+
+---
+
+# 🔥 6. Your Troubleshooting Flow (Based on your issue)
+
+```mermaid
+flowchart TD
+
+A["Issue: consul members → connection refused"]
+
+B["Check systemd status"]
+C["Check port 8500"]
+D["Check logs journalctl"]
+E["Check config file"]
+F["Run manual agent"]
+G["Verify firewall / SG rules"]
+
+A --> B --> C --> D --> E --> F --> G
+```
+
+---
+
+# 🧪 7. Failure Scenarios (Production View)
+
+```mermaid
+flowchart TB
+
+L["Leader Failure"]
+N["Network Partition"]
+D["Disk Failure"]
+G["Gossip Failure"]
+
+L --> R1["Raft re-election triggered"]
+N --> R2["Split brain risk mitigated by quorum"]
+D --> R3["Node marked unhealthy"]
+G --> R4["Node marked failed via gossip timeout"]
+
+R1 --> OK["New leader elected"]
+R2 --> OK
+R3 --> OK
+R4 --> OK
+```
+
+---
+
+# ⚖️ 8. Consul vs Zookeeper vs Etcd
+
+```mermaid
+flowchart LR
+
+C["Consul"]
+Z["Zookeeper"]
+E["etcd"]
+
+C --> C1["Raft + Gossip"]
+C --> C2["Service Discovery + KV + Health checks"]
+
+Z --> Z1["Zab Protocol"]
+Z --> Z2["Strong consistency, but heavy ops"]
+
+E --> E1["Raft only"]
+E --> E2["Kubernetes backing store"]
+
+C --- Compare["Best: Service mesh + discovery"]
+Z --- Compare
+E --- Compare
+```
+
+---
+
+# 🧠 9. Your Actual PoC Flow (End-to-End)
+
+```mermaid
+flowchart LR
+
+A["Installed Consul binary"]
+B["Created /etc/consul.d/consul.hcl"]
+C["Created systemd service"]
+D["Opened AWS Security Groups"]
+E["Started agent manually"]
+F["Cluster formed (3 nodes)"]
+G["Leader elected (consul-2)"]
+H["Verified via consul members"]
+
+A --> B --> C --> D --> E --> F --> G --> H
+```
+
+---
 
 ---
 
@@ -798,7 +1035,7 @@ For production:
 
 ---
 
-# 7. Commands You Used (COMPLETE FLOW)
+# 7. Commands Used (COMPLETE FLOW)
 
 ---
 
